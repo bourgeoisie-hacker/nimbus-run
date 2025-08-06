@@ -209,7 +209,7 @@ public class GCPComputeService extends Compute {
     }
 
     @Override
-    public void createCompute(ActionPool autoscalerActionPool) {
+    public boolean createCompute(ActionPool autoscalerActionPool) {
         //TODO create a counter for when an instance is created
         String instanceName = createInstanceName();
         GCPConfig.ActionPool actionPool = this.gcpActionPool.get(autoscalerActionPool.getName());
@@ -224,13 +224,13 @@ public class GCPComputeService extends Compute {
             if(githubRunnerTokenOpt.isEmpty()){
                 String msg = "Failed to generate token";
                 log.error(msg);
-                return;
+                return false;
             }
             String githubRunnerToken = githubRunnerTokenOpt.get();
             Optional<String> sourceImage = cacheLatestUbuntuVersion(actionPool);
             if(sourceImage.isEmpty()){
                 log.error("Failed to query latest ubuntu image");
-                return;
+                return false;
             }
             AttachedDisk attachedDisk = AttachedDisk.newBuilder()
                     .setInitializeParams(
@@ -272,10 +272,11 @@ public class GCPComputeService extends Compute {
             if (response.hasError()) {
                 String msg = "Instance creation failed!!" + response;
                 log.error(msg);
-                throw new RuntimeException(msg);
+                return false;
             }
             log.info("Instance created : %s".formatted( instanceName));
             log.debug("Operation Status: " + response.getStatus());
+            return true;
         }
          catch (ExecutionException | IOException e) {
             throw new RuntimeException(e);
@@ -284,6 +285,7 @@ public class GCPComputeService extends Compute {
         } catch (TimeoutException e) {
             log.warn("Instance creation response timed out for %s. The instance might have been created or not. ¯\\_(ツ)_/¯".formatted(instanceName) );
         }
+        return false;
     }
 
     private NetworkInterface createNetworkInterface(String vpcName, String subnetName){

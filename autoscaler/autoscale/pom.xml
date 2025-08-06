@@ -4,13 +4,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.nimbusrun</groupId>
-        <artifactId>AutoScaler2</artifactId>
+        <artifactId>autoscaler</artifactId>
         <version>1.0.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>com.nimbusrun</groupId>
-    <artifactId>autoscaler</artifactId>
-    <name>AutoScaler</name>
+    <artifactId>autoscale</artifactId>
+    <name>AutoScale</name>
     <description>AutoScaler</description>
 
     <properties>
@@ -101,23 +101,14 @@
             <artifactId>spring-kafka-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.nimbusrun</groupId>
-            <artifactId>compute-api</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusrun</groupId>
-            <artifactId>compute-gcp</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+
     </dependencies>
 
 
     <profiles>
         <profile>
             <id>aws</id>
-
+            <activation><activeByDefault>true</activeByDefault></activation>
             <dependencies>
                 <dependency>
                     <groupId>com.nimbusrun</groupId>

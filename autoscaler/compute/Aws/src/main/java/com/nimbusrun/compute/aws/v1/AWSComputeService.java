@@ -217,7 +217,7 @@ public class AWSComputeService extends Compute {
     }
 
     @Override
-    public void createCompute(ActionPool autoScalerActionPool) {
+    public boolean createCompute(ActionPool autoScalerActionPool) {
         AwsConfig.ActionPool actionPool = this.awsActionPool.get(autoScalerActionPool.getName());
 
         // Configure AWS client
@@ -230,7 +230,7 @@ public class AWSComputeService extends Compute {
             String amiId = regionUbuntuAmiCache.get(region, (r)->latestAmi(r).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
             if(amiId != null){
                 log.error("Ubuntu AMI does not exist for region {}", actionPool.getRegion());
-                return;
+                return false;
             }
             // Create startup script for GitHub runner
             Optional<String> runnerToken = this.githubService.generateRunnerToken();
@@ -289,12 +289,12 @@ public class AWSComputeService extends Compute {
             log.info("Creating instance for action pool {}", actionPool.getName());
             // Launch the instance
             RunInstancesResponse response = ec2.runInstances(runRequest.build());
-
+            return true;
         }catch (Exception e){
             log.debug("Failed to create instance", e);
             log.error("Failed to create instance {}", e.getMessage());
         }
-
+        return false;
     }
 
     public Optional<Region> regionFromString(String region){

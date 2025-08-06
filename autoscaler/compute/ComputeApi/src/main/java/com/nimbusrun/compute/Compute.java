@@ -11,13 +11,35 @@ public abstract class Compute {
     public Compute() {
 
     }
-    public abstract ListInstanceResponse listComputeInstances(ActionPool pool);
 
-    public abstract void createCompute(ActionPool config) throws Exception;
+    /** List instances that are associated with the action pool by name
+     *
+     * @param actionPool - action pool
+     * @return ListInstanceResponse
+     */
+    public abstract ListInstanceResponse listComputeInstances(ActionPool actionPool);
 
+    /** Creates a compute instance for the associated action pool.
+     * Please keep in mind that the compute instance should be discoverable in the {@link Compute#listComputeInstances} method.
+     * For example:
+     *  AWS instances are tagged with key/value pairs
+     *    - action-pool=some_name1
+     *    - nimbusrun=some_name2
+     *
+     * @param actionPool
+     * @throws Exception
+     */
+    public abstract boolean createCompute(ActionPool actionPool) throws Exception;
+
+    /** Deletes the compute instance.
+     *
+     * @param deleteInstanceRequest
+     * @return
+     * @throws Exception
+     */
     public abstract boolean deleteCompute(DeleteInstanceRequest deleteInstanceRequest) throws Exception;
-    public abstract List<ActionPool> listActionPools();
-    public abstract ComputeConfigResponse receiveComputeConfigs(Map<String, Object> map, String autoScalerName);
+    public abstract List<ActionPool> listActionPools() throws Exception;
+    public abstract ComputeConfigResponse receiveComputeConfigs(Map<String, Object> map, String autoScalerName) throws Exception;
 
     public final String createRunnerLabels(Map<String,String> map) {
         return map.keySet().stream().map((key)->{

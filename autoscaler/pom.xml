@@ -21,7 +21,7 @@
         <module>compute/Gcp</module>
         <module>ActionTracker</module>
         <module>Webhook</module>
-        <module>AutoScaler</module>
+        <module>Autoscale</module>
     </modules>
 
     <properties>

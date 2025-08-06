@@ -12,6 +12,7 @@ import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.autoscaler.config.ConfigReader;
 import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -34,7 +35,7 @@ public class Autoscaler {
     public BlockingDeque<ActionPool> receivedRequests = new LinkedBlockingDeque<>();
     private final Map<String, ActionPool> actionPoolMap;
     private final Optional<ActionPool> defaultActionPool;
-
+    private final MeterRegistry meterRegistry;
     private final Map<ActionPool, InstanceScalerTimeTracker> timeTrackerMap;
     private Compute compute;
     private GithubService githubService;
@@ -45,10 +46,11 @@ public class Autoscaler {
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
     private final Cache<String, AtomicInteger> runnerIdDeleteCounter;
 
-    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader) {
+    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MeterRegistry meterRegistry) {
         this.compute = compute;
         this.githubService = githubService;
         this.configReader = configReader;
+        this.meterRegistry = meterRegistry;
         this.processMessageThread = Executors.newSingleThreadExecutor();
         this.mainThread = Executors.newScheduledThreadPool(1);
         this.virtualThreadPerTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -184,7 +186,12 @@ public class Autoscaler {
                     ActionPool finalPool = pool;
                     this.virtualThreadPerTaskExecutor.execute(() -> {
                         try {
-                            compute.createCompute(finalPool);
+                            boolean successful = compute.createCompute(finalPool);
+                            if(successful){
+
+                            }else{
+
+                            }
                         } catch (Exception e) {
                             log.error("Failed to create compute instance for action pool %s due to %s".formatted(finalPool.getName(), e.getMessage()));
                             log.debug("Failed to create compute instance for action pool %s".formatted(finalPool.getName()), e);
