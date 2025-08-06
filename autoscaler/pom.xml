@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.3</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.nimbusrun</groupId>
+    <artifactId>autoscaler</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>compute/ComputeApi</module>
+        <module>compute/Aws</module>
+        <module>compute/Gcp</module>
+        <module>ActionTracker</module>
+        <module>Webhook</module>
+        <module>AutoScaler</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <skip.jib.plugin>true</skip.jib.plugin>
+        <dockerhub.repository.owner>bourgeoisiehacker</dockerhub.repository.owner>
+        <jib.main.class>nada</jib.main.class>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.4.4</version>
+                <configuration>
+                    <skip>${skip.jib.plugin}</skip>
+                    <dockerClient>
+                        <executable>$(which podman)</executable>
+                    </dockerClient>
+                    <from>
+                        <image>openjdk:21-jdk</image>
+                    </from>
+                    <to>
+                        <image>${dockerhub.repository.owner}/${project.artifactId}</image>
+                        <tags>
+                            <tag>${project.version}</tag>
+                            <tag>latest</tag>
+                        </tags>
+                    </to>
+                    <container>
+                        <mainClass>${jib.main.class}</mainClass>
+                    </container>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

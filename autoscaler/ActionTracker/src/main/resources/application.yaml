@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: ActionTracker
+
+kafka:
+  topic: test-topic
+  broker: localhost:9092
+  group-id: action-tracker-group

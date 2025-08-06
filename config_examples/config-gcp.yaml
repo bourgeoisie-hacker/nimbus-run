@@ -1,0 +1,47 @@
+
+name: gcp-1-autoscaler
+computeType: gcp
+logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
+kafka:
+  retryTopic: retry
+  webhookTopic: test-topic
+  broker: localhost:9092
+  consumerGroupId: aws-autoscaler
+
+github:
+  groupName: "group1"
+  organizationName: "bourgeoisie-whacker"
+  token: ${GITHUB_TOKEN}
+
+compute:
+  defaultSettings:
+    idleScaleDownInMinutes: 10
+    projectId: massive-dynamo-342018
+    region: us-east1
+    subnet: regions/us-east1/subnetworks/default
+    vpc: global/networks/default
+    zones: ["us-east1-b","us-east1-c", "us-east1-d"]
+  #    serviceAccountPath: #<------- if blank it'll just use the default Credentials provider
+    diskSettings:
+      size: "20" # in gigs
+    instanceType: e2-highcpu-4
+    maxInstanceCount: 10 # <--no max
+  defaultActionPool:
+    name: defaultPool
+  actionPools:
+    - name: n2d-standard-2
+      instanceType: n2d-standard-2
+      maxInstanceCount: 1
+      subnet: subnet-1234
+      diskSettings:
+        size: 12
+    - instanceType: n1-standard-4
+      maxInstanceCount: 4
+      name: n1-standard-4
+    - instanceType: c4-standard-4-lssd
+      name: c4-standard-4-lssd
+      maxInstanceCount: 3
+      isNvme: true
+    - instanceType: e2-highcpu-4
+      name: e2-highcpu-4
+      maxInstanceCount: 3
