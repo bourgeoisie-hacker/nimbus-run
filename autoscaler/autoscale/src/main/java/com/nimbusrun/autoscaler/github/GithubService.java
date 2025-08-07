@@ -129,6 +129,9 @@ public class GithubService implements GithubApi {
         try (var client = createHttpClient(); var response = client.execute(request)) {
             List<String> pages = new ArrayList<>();
             collectPaginatedResponses(response, client, pages);
+            if(response.getCode()>=300){
+                log.error("Received response code %s from request %s".formatted(response.getCode(),request));
+            }
             List<T> results = new ArrayList<>();
             for (String json : pages) {
                 results.add(OBJECT_MAPPER.readValue(json, clazz));

@@ -29,8 +29,8 @@ public class AutoScalerApplication {
         setSystemProperties(info);
         var ctx = SpringApplication.run(AutoScalerApplication.class, args);
 //        ctx.getBean(Autoscaler.class).receivedRequests.offer(new ActionPool("t3.medium", 1, 1));
-//        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1, 1));
-        ctx.getBean(Compute.class).createCompute(new ActionPool("n1-standard-4", 1, 1));
+        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1, 1));
+//        ctx.getBean(Compute.class).createCompute(new ActionPool("n1-standard-4", 1, 1));
 
     }
 

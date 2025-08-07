@@ -26,7 +26,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Profile("aws")
 @Component
 public class AWSComputeService extends Compute {
     private static final Logger log = LoggerFactory.getLogger(AWSComputeService.class);
@@ -228,15 +227,17 @@ public class AWSComputeService extends Compute {
             Region region = regionFromString(actionPool.getRegion()).get();
             // Set up instance parameters
             String amiId = regionUbuntuAmiCache.get(region, (r)->latestAmi(r).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
-            if(amiId != null){
+            if(amiId == null){
                 log.error("Ubuntu AMI does not exist for region {}", actionPool.getRegion());
                 return false;
             }
             // Create startup script for GitHub runner
             Optional<String> runnerToken = this.githubService.generateRunnerToken();
-
+            if(runnerToken.isEmpty()){
+                log.error("Failed to retrieve github runner token");
+                return false;
+            }
             String runnerName = this.createInstanceName();
-
 
             // Generate the startup script
             String startupScript = startUpScript(
@@ -286,7 +287,7 @@ public class AWSComputeService extends Compute {
                         .build();
                 runRequest.blockDeviceMappings(rootVolume);
             }
-            log.info("Creating instance for action pool {}", actionPool.getName());
+            log.info("Creating instance {} for action pool {} ",runnerName,actionPool.getName());
             // Launch the instance
             RunInstancesResponse response = ec2.runInstances(runRequest.build());
             return true;

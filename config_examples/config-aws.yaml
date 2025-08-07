@@ -9,13 +9,13 @@ kafka:
   consumerGroupId: aws-autoscaler
 
 github:
-  groupName: "group1"
+  groupName: "prod"
   organizationName: "bourgeoisie-whacker"
   token: ${GITHUB_TOKEN}
 
 compute:
   defaultSettings:
-    idleScaleDownInMinutes: 2
+    idleScaleDownInMinutes: 10
     region: us-east-1
     subnet: subnet-257dbf7d
     securityGroup: sg-0189c3298c7be64ca

@@ -9,7 +9,7 @@ kafka:
   consumerGroupId: aws-autoscaler
 
 github:
-  groupName: "group1"
+  groupName: "prod"
   organizationName: "bourgeoisie-whacker"
   token: ${GITHUB_TOKEN}
 
