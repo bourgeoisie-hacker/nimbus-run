@@ -31,9 +31,12 @@ public class ActionTrackerConfig {
         private String broker;
         private String consumerGroupId;
     }
-
+    @Data
+    public static class GithubConfig{
+        private String groupName;
+    }
     private String name;
-    private KafkaConfig kafkaConfig;
-    private GithubConfig githubConfig;
+    private KafkaConfig kafka;
+    private GithubConfig github;
     private LogLevel logLevel;
 }
