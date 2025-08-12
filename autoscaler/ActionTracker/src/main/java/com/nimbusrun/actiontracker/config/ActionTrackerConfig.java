@@ -1,9 +1,10 @@
-package com.nimbusrun.autoscaler.config;
+package com.nimbusrun.actiontracker.config;
 
 import lombok.Data;
 import lombok.Getter;
+
 @Data
-public class BaseConfig {
+public class ActionTrackerConfig {
     public enum LogLevel{
         INFO("info"), WARN("warn"), ERROR("error"), DEBUG("debug"), VERBOSE("verbose"), UNKNOWN("unknown"), N_A("n/a");
         @Getter
@@ -20,10 +21,8 @@ public class BaseConfig {
                     return level;
                 }
             }
-
             return UNKNOWN;
         }
-
     }
     @Data
     public static class KafkaConfig{
@@ -33,18 +32,8 @@ public class BaseConfig {
         private String consumerGroupId;
     }
 
-    @Data
-    public static class GithubConfig{
-        private String groupName;
-        private String organizationName;
-        private String token;
-        private String webhookSecret;
-    }
-
     private String name;
-    private KafkaConfig kafka;
-    private GithubConfig github;
-    private Object compute;
-    private String computeType;
+    private KafkaConfig kafkaConfig;
+    private GithubConfig githubConfig;
     private LogLevel logLevel;
 }

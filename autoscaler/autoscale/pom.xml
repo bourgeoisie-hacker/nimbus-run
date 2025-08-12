@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>1.0.0</version>
+        <version>0.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>com.nimbusrun</groupId>
@@ -105,11 +105,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!--        <dependency>-->
-<!--            <groupId>com.nimbusrun</groupId>-->
-<!--            <artifactId>compute-aws</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--        </dependency>-->
+                <dependency>
+            <groupId>com.nimbusrun</groupId>
+            <artifactId>common</artifactId>
+            <version>0.1.0</version>
+        </dependency>
     </dependencies>
 
 
@@ -122,7 +122,7 @@
                 <dependency>
                     <groupId>com.nimbusrun</groupId>
                     <artifactId>compute-aws</artifactId>
-                    <version>1.0.0</version>
+                    <version>0.1.0</version>
                 </dependency>
             </dependencies>
             <build>
@@ -135,7 +135,7 @@
                 <dependency>
                     <groupId>com.nimbusrun</groupId>
                     <artifactId>compute-gcp</artifactId>
-                    <version>1.0.0</version>
+                    <version>0.1.0</version>
                 </dependency>
             </dependencies>
             <build>

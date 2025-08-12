@@ -1,6 +1,8 @@
-
+name: ActionTracker
 kafka:
   retryTopic: retry
-  webhookTopic: test-topic
+  webhookTopic: webhook
   broker: localhost:9092
   consumerGroupId: aws-autoscaler
+github:
+  groupName: "prod"

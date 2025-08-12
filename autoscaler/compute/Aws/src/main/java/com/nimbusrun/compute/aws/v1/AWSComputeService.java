@@ -9,7 +9,7 @@ import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
-import com.nimbusrun.compute.Utils;
+import com.nimbusrun.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;

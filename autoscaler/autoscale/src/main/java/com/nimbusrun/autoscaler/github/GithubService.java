@@ -9,6 +9,7 @@ import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.ListRunnerGroup;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.RunnerGroup;
 import com.nimbusrun.compute.GithubApi;
+import com.nimbusrun.Utils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.*;
@@ -93,6 +94,29 @@ public class GithubService implements GithubApi {
             log.error("Failed to generate runner token", e);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public boolean isJobQueued(String runUrl) {
+        try (var client = createHttpClient()) {
+            var request = new HttpGet(runUrl);
+            CloseableHttpResponse response = client.execute(request);
+            String body = new String(response.getEntity().getContent().readAllBytes());
+            if(response.getCode() >= 200 && response.getCode() < 300){
+                JSONObject obj = new JSONObject(body);
+                if(obj.has("status") && obj.getString("status").equalsIgnoreCase("queued")){
+                    return true;
+                }else {
+                    return false;
+                }
+            }else {
+                log.error("Error fetching job info for %s. Due to: %s".formatted(runUrl, response.getEntity().getContent(),body));
+                return false;
+            }
+        }catch (Exception e){
+            Utils.excessiveErrorLog("Error fetching job info for %s".formatted(runUrl), e, log);
+        }
+        return false;
     }
 
     public List<Runner> listRunnersInGroup() {

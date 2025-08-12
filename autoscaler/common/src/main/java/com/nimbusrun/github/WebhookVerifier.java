@@ -1,4 +1,4 @@
-package com.nimbusrun.autoscaler.controller;
+package com.nimbusrun.github;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

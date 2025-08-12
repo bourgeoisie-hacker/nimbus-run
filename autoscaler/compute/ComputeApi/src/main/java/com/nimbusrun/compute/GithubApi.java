@@ -12,4 +12,7 @@ public interface GithubApi {
     public Integer getRunnerGroupId();
 
     public String getRunnerGroupName();
+
+    public boolean isJobQueued(String runUrl);
+
 }

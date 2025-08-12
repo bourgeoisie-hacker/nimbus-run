@@ -7,6 +7,7 @@ import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.ListInstanceResponse;
+import com.nimbusrun.github.GithubActionJob;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -144,9 +145,9 @@ class AutoscalerTest {
         payload.put("workflow_job", workflowJob);
 
         when(githubService.getRunnerGroupName()).thenReturn("test-group");
-
+        GithubActionJob githubActionJob = GithubActionJob.fromJson(payload);
         // Execute
-        boolean result = autoscaler.receive(payload);
+        boolean result = autoscaler.receive(githubActionJob);
 
         // Verify
         assertTrue(result);

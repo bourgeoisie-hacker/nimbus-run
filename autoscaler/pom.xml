@@ -12,7 +12,7 @@
     </parent>
     <groupId>com.nimbusrun</groupId>
     <artifactId>autoscaler</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -22,8 +22,17 @@
         <module>ActionTracker</module>
         <module>Webhook</module>
         <module>autoscale</module>
+        <module>common</module>
     </modules>
-
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20250517</version>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>

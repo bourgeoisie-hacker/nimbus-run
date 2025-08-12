@@ -3,6 +3,7 @@ package com.nimbusrun.autoscaler;
 import com.nimbusrun.autoscaler.config.BaseConfig;
 import com.nimbusrun.autoscaler.config.ConfigReader;
 import com.nimbusrun.autoscaler.config.ConfigurationFileInfo;
+import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -22,25 +25,18 @@ import java.util.List;
 public class AutoScalerApplication {
 
     public static void main(String[] args) throws Exception {
-        ApplicationArguments arguments = new DefaultApplicationArguments(args);
-        ConfigurationFileInfo info = new ConfigurationFileInfo(arguments);
 
-
-        setSystemProperties(info);
-        var ctx = SpringApplication.run(AutoScalerApplication.class, args);
+        setSystemProperties();
+        SpringApplication.run(AutoScalerApplication.class, args);
 //        ctx.getBean(Autoscaler.class).receivedRequests.offer(new ActionPool("t3.medium", 1, 1));
-        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1, 1));
+//        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1, 1));
 //        ctx.getBean(Compute.class).createCompute(new ActionPool("n1-standard-4", 1, 1));
-
     }
 
     // Not the biggest fan of having validation in multiple spots. But to avoid springboot stacktraces as much as possible we should validate the config value first.
-    public static void setSystemProperties(ConfigurationFileInfo info) throws IOException {
-        if(info.getErrors().size() > 0 ){
-            info.getErrors().forEach( log::error);
-            System.exit(1);
-        }
-        BaseConfig config = ConfigReader.readConfig(info.getConfigPath().toString());
+    public static void setSystemProperties() throws IOException {
+
+        BaseConfig config = ConfigReader.readConfig();
         List<String> errors = ConfigReader.validateBaseConfig(config);
 
         if(!errors.isEmpty()){
@@ -49,7 +45,7 @@ public class AutoScalerApplication {
         }
         setLogLevel(config);
         System.setProperty("spring.config.location", System.getenv(ConfigReader.NIMBUS_RUN_CONFIGURATION_FILE_ENV));
-        System.setProperty("spring.profiles.active", config.getComputeType().getSimpleName());
+        System.setProperty("spring.profiles.active", config.getComputeType());
         System.setProperty("spring.application.name", config.getName());
     }
 

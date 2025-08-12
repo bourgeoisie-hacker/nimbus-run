@@ -1,5 +1,6 @@
 package com.nimbusrun.actiontracker.service;
 
+import com.nimbusrun.github.GithubActionJob;
 import lombok.Data;
 
 import java.util.Objects;

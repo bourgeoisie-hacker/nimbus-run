@@ -1,3 +1,8 @@
 kafka:
   webhookTopic: test-topic
   broker: localhost:9092
+
+
+github:
+  webhook:
+    secret: test

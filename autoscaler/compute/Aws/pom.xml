@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>1.0.0</version>
+        <version>0.1.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>compute-aws</artifactId>
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.nimbusrun</groupId>
             <artifactId>compute-api</artifactId>
-            <version>1.0.0</version>
+            <version>0.1.0</version>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
@@ -48,15 +48,13 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.nimbusrun</groupId>
+            <artifactId>common</artifactId>
+            <version>0.1.0</version>
+        </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-
 </project>
+
+

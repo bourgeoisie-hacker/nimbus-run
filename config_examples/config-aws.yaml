@@ -1,10 +1,10 @@
 name: aws-1-autoscaler
 computeType: aws
 logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
-
+standalone: false # "default false"
 kafka:
   retryTopic: retry
-  webhookTopic: test-topic
+  webhookTopic: webhook
   broker: localhost:9092
   consumerGroupId: aws-autoscaler
 
@@ -12,6 +12,8 @@ github:
   groupName: "prod"
   organizationName: "bourgeoisie-whacker"
   token: ${GITHUB_TOKEN}
+  webhook:
+    secret: test
 
 compute:
   defaultSettings:

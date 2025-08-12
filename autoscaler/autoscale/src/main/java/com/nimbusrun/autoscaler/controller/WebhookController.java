@@ -1,8 +1,12 @@
 package com.nimbusrun.autoscaler.controller;
 
+import com.nimbusrun.Utils;
 import com.nimbusrun.autoscaler.autoscaler.Autoscaler;
+import com.nimbusrun.github.GithubActionJob;
+import com.nimbusrun.github.WebhookVerifier;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +20,9 @@ import org.springframework.web.bind.annotation.*;
 public class WebhookController {
 
   private final Autoscaler autoscaler;
-  public WebhookController(Autoscaler autoscaler) {
+  private final String secret;
+  public WebhookController(Autoscaler autoscaler, @Value("${github.webhook.secret:#{null}}") String secret) {
+    this.secret = secret;
     this.autoscaler = autoscaler;
   }
 
@@ -26,16 +32,18 @@ public class WebhookController {
       JSONObject json = new JSONObject(payload);
       log.debug("Recieved: \n" + payload.replace("\n","\n\t"));
 
-      if(WebhookVerifier.verifySignature(payload.getBytes(),"test", signature)){
+      if(secret != null && !WebhookVerifier.verifySignature(payload.getBytes(),secret, signature)){
 
         return new ResponseEntity<>(HttpStatusCode.valueOf(201));
       }
       if (!json.has("workflow_job")) {
         return new ResponseEntity<>(HttpStatusCode.valueOf(201));
       }
-      autoscaler.receive(json);
+
+      GithubActionJob githubActionJob = GithubActionJob.fromJson(json);
+      autoscaler.receive(githubActionJob);
     }catch (Exception e){
-      log.debug("problem in the webhook",e);
+      Utils.excessiveErrorLog("Problem in the webhook", e,log);
     }
     return new ResponseEntity<>(HttpStatusCode.valueOf(201));
   }

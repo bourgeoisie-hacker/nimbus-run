@@ -1,7 +1,9 @@
 package com.nimbusrun.webhook;
 
+import com.nimbusrun.github.WebhookVerifier;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,9 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class WebhookController {
 
   private final KafkaService kakfaService;
+  private final String webhookSecret;
 
-  public WebhookController(KafkaService kafkaService) {
-    this.kakfaService =kafkaService;
+  public WebhookController(KafkaService kafkaService, @Value("${github.webhook.secret:#{null}}") String webhookSecret) {
+    this.kakfaService = kafkaService;
+    this.webhookSecret = webhookSecret;
   }
 
   @PostMapping()
@@ -24,7 +28,7 @@ public class WebhookController {
       JSONObject json = new JSONObject(payload);
       log.debug("Recieved: \n" + payload.replace("\n","\n\t"));
 
-      if(WebhookVerifier.verifySignature(payload.getBytes(),"test", signature)){
+      if(webhookSecret != null && !WebhookVerifier.verifySignature(payload.getBytes(), webhookSecret, signature)){
 
         return new ResponseEntity<>(HttpStatusCode.valueOf(201));
       }

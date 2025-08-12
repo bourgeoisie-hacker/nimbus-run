@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.nimbusrun.compute.Utils;
+import com.nimbusrun.Utils;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.Constants;
@@ -14,10 +14,10 @@ import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.autoscaler.config.ConfigReader;
 import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
+import com.nimbusrun.github.GithubActionJob;
+import com.nimbusrun.github.WorkflowJobStatus;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -35,6 +35,7 @@ public class Autoscaler {
 
     private final ScheduledExecutorService mainThread;
     public BlockingDeque<ActionPool> receivedRequests = new LinkedBlockingDeque<>();
+    public BlockingDeque<GithubActionJob> receivedRetryRequests = new LinkedBlockingDeque<>();
     private final Map<String, ActionPool> actionPoolMap;
     private final Optional<ActionPool> defaultActionPool;
     private final MeterRegistry meterRegistry;
@@ -43,7 +44,7 @@ public class Autoscaler {
     private GithubService githubService;
     private ConfigReader configReader;
     private final ExecutorService processMessageThread;
-    final ExecutorService virtualThreadPerTaskExecutor;
+    private final ExecutorService virtualThreadPerTaskExecutor;
     private final Cache<String, AtomicBoolean> runnerLastBusy;
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
     private final Cache<String, AtomicInteger> runnerIdDeleteCounter;
@@ -53,15 +54,17 @@ public class Autoscaler {
         this.githubService = githubService;
         this.configReader = configReader;
         this.meterRegistry = meterRegistry;
-        this.processMessageThread = Executors.newSingleThreadExecutor();
-        this.mainThread = Executors.newScheduledThreadPool(1);
+        this.processMessageThread = Executors.newFixedThreadPool(2, Thread.ofVirtual().factory());
+        this.mainThread = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
         this.virtualThreadPerTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.actionPoolMap = populateActionPoolMap();
         this.timeTrackerMap = populateTimeTrackerMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
-        this.mainThread.scheduleWithFixedDelay(this::run,10,30, TimeUnit.SECONDS);
 
-        processMessageThread.execute(this::processMessage);
+        this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,10,30, TimeUnit.SECONDS);
+        this.processMessageThread.execute(this::processMessage);
+        this.processMessageThread.execute(this::processRetryMessage);
+
         this.runnerLastBusy = Caffeine.newBuilder()
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofHours(2))
@@ -101,7 +104,7 @@ public class Autoscaler {
 
     }
 
-    public void run() {
+    public void handleComputeAndRunners() {
         try {
             List<Runner> runners = githubService.listRunnersInGroup();
             Map<String, Runner> runnersMap = runners.stream().collect(Collectors.toMap(Runner::getName, Function.identity()));
@@ -170,6 +173,19 @@ public class Autoscaler {
 
     }
 
+    public synchronized void processRetryMessage(){
+        while(true){
+            try{
+                GithubActionJob gj;
+                while((gj = this.receivedRetryRequests.poll(1,TimeUnit.MINUTES)) != null){
+                    if(this.githubService.isJobQueued(gj.getRunUrl())){
+                        log.info("Retrying payload {}", gj.getJsonStr());
+                        receive(gj);
+                    }
+                }
+            }catch (Exception e){}
+        }
+    }
     public synchronized void processMessage() {
         while (true) {
             try {
@@ -266,14 +282,23 @@ public class Autoscaler {
         }
     }
 
-    public boolean receive(JSONObject payload) {
 
-        JSONObject workflowJob = payload.getJSONObject("workflow_job");
-        JSONArray labels = workflowJob.getJSONArray("labels");
+    /** So not to block kafka receiver the githubActionJob is offered to a dequeue
+     *   for later processing in method {@link Autoscaler#processRetryMessage()}
+     *
+     * @param githubActionJob
+     */
+    public void receiveRetry(GithubActionJob githubActionJob){
+        this.receivedRetryRequests.offer(githubActionJob);
+    }
+
+    public boolean receive(GithubActionJob githubActionJob) {
+        if(githubActionJob.getStatus() != WorkflowJobStatus.QUEUED){
+            return false;
+        }
         ActionPool actionPool = null;
         boolean isForGroup = false;
-        for (int i = 0; i < labels.length(); i++) {
-            String label = labels.getString(i);
+        for (String label : githubActionJob.getLabels()) {
             if (label.contains("=") && label.split("=").length == 2) {
                 String key = label.split("=")[0];
                 String value = label.split("=")[1];
@@ -288,7 +313,7 @@ public class Autoscaler {
         if (isForGroup ) {
             ActionPool actionPoolToRun = Optional.ofNullable(actionPool).orElse(defaultActionPool.orElse(null));
             if(actionPoolToRun == null){
-                log.warn("No action pool specified for workflow and no default action pool configured: {}", payload);
+                log.warn("No action pool specified for workflow and no default action pool configured: {}", githubActionJob.getJsonStr());
                 return false;
             }
             //(actionPool != null) check for default action pool

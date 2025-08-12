@@ -1,4 +1,4 @@
-package com.nimbusrun.actiontracker.config;
+package com.nimbusrun.actiontracker.service;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
