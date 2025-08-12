@@ -1,5 +1,6 @@
 package com.nimbusrun.actiontracker.service;
 
+import com.nimbusrun.Constants;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -41,11 +42,25 @@ public class TrackService {
         this.kafkaProducer = kafkaReceiver;
     }
 
+    public boolean hasActionPoolLabel(GithubActionJob gj ){
+        return gj.getLabels().stream().anyMatch(label->{
+            String[] labelSplit = label.replace(" ", "").split("=");
+            if(labelSplit.length != 3){
+                return false;
+            }else if(labelSplit[0] == Constants.ACTION_GROUP_LABEL_KEY){
+                return true;
+            }
+            return false;
+        });
+    }
     public void runUpdateWatcher(){
             while (true) {
                 try{
                     GithubActionJob gj;
                     while((gj = this.jobQueue.poll(1, TimeUnit.HOURS)) != null){
+                        if(!hasActionPoolLabel(gj)){
+                            return;
+                        }
                         GithubActionJob finalGj = gj;
                         WorkflowJobWatcher watcher = workflowJobWatcherMap.computeIfAbsent(gj.getId(),
                                 (key)-> WorkflowJobWatcher.WorkflowJobWatcherBuilder.aWorkflowJobWatcher()

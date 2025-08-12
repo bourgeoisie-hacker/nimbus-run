@@ -1,4 +1,4 @@
-package com.nimbusrun.compute;
+package com.nimbusrun;
 
 public class Constants {
     public static final int DEFAULT_TIME_BETWEEN_SCALE_UPS_IN_SECONDS = 2;
