@@ -1,6 +1,3 @@
-spring:
-  application:
-    name: NimbusRun-Webhook
 kafka:
-  topic: test-topic
+  webhookTopic: test-topic
   broker: localhost:9092

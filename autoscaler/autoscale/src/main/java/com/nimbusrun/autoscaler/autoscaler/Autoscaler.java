@@ -4,6 +4,8 @@ package com.nimbusrun.autoscaler.autoscaler;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.nimbusrun.compute.Utils;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.Constants;
@@ -74,16 +76,19 @@ public class Autoscaler {
                 .build();
     }
 
-    private Map<String, ActionPool> populateActionPoolMap() {
+    @VisibleForTesting
+    Map<String, ActionPool> populateActionPoolMap() {
         return this.configReader.getActionPoolMap().values().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b, ConcurrentHashMap::new));
     }
 
-    private Map<ActionPool, InstanceScalerTimeTracker> populateTimeTrackerMap() {
+    @VisibleForTesting
+    Map<ActionPool, InstanceScalerTimeTracker> populateTimeTrackerMap() {
         return this.configReader.getActionPoolMap().values()
                 .stream()
                 .collect(Collectors.toMap(Function.identity(), InstanceScalerTimeTracker::new,
                         (a, b) -> b, ConcurrentHashMap::new));
     }
+
 
     public void retryLater(long waitInMilliseconds, ActionPool actionPool) {
         this.virtualThreadPerTaskExecutor.execute(() -> {
@@ -193,8 +198,7 @@ public class Autoscaler {
 
                             }
                         } catch (Exception e) {
-                            log.error("Failed to create compute instance for action pool %s due to %s".formatted(finalPool.getName(), e.getMessage()));
-                            log.debug("Failed to create compute instance for action pool %s".formatted(finalPool.getName()), e);
+                            Utils.excessiveErrorLog("Failed to create compute instance for action pool %s due to %s".formatted(finalPool.getName(), e.getMessage()), e, log);
                         }
                     });
                 }

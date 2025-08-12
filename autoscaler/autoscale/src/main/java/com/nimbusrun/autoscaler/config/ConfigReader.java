@@ -5,6 +5,7 @@ import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.ComputeConfigResponse;
 import com.nimbusrun.compute.ComputeType;
 import com.nimbusrun.compute.Constants;
+import com.nimbusrun.compute.Utils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -72,8 +73,7 @@ public class ConfigReader {
             }
             actionPoolMap.putAll(response.actionPools().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity())));
         }catch (Exception e){
-            log.error("Error setting up Configurations occurred {}. turn on debug mode for stack trace.", e.getMessage());
-            log.debug("Error setting up Configurations occurred",e);
+            Utils.excessiveErrorLog("Error setting up Configurations occurred due to %s.".formatted(e.getMessage()), e, log);
             System.exit(1);
         }
         this.baseConfig = baseConfig1;

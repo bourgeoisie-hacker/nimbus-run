@@ -9,6 +9,7 @@ import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
+import com.nimbusrun.compute.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -292,8 +293,8 @@ public class AWSComputeService extends Compute {
             RunInstancesResponse response = ec2.runInstances(runRequest.build());
             return true;
         }catch (Exception e){
-            log.debug("Failed to create instance", e);
-            log.error("Failed to create instance {}", e.getMessage());
+            Utils.excessiveErrorLog("Failed to create instance %s".formatted(e.getMessage()), e, log);
+
         }
         return false;
     }
@@ -335,8 +336,8 @@ public class AWSComputeService extends Compute {
                log.warn("No Ubuntu AMIs found matching the criteria.");
             }
         } catch (Exception e) {
-            log.debug("Error finding latest Ubuntu AMI: ", e);
-           log.error("Error finding latest Ubuntu AMI: " + e.getMessage());
+            Utils.excessiveErrorLog("Error finding latest Ubuntu AMI due to %s".formatted(e.getMessage()), e, log);
+
         }
         return Optional.empty();
     }

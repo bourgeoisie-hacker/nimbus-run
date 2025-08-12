@@ -26,7 +26,7 @@ public class KafkaService {
     private final String kafakaTopic;
     private final String kafakaBroker;
 
-    public KafkaService(@Value("${kafka.topic}") String kafakaTopic, @Value("${kafka.broker}")String kafakaBroker){
+    public KafkaService(@Value("${kafka.webhookTopic}") String kafakaTopic, @Value("${kafka.broker}")String kafakaBroker){
         this.kafakaTopic = kafakaTopic;
         this.kafakaBroker = kafakaBroker;
         tpe = (ThreadPoolExecutor) Executors.newFixedThreadPool(1);

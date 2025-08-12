@@ -1,21 +1,32 @@
 package com.nimbusrun.actiontracker.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.util.Properties;
+import java.util.concurrent.Future;
+
 @Service
 @Slf4j
-public class KafkaReceiver {
-
+public class KafkaService {
+    private final String retryTopic;
+    public KafkaService(@Value("${kafka.retryTopic}") String retryTopic){
+        this.retryTopic = retryTopic;
+    }
     /**
      * Receives messages from the Kafka topic.
      * This method is called automatically by Spring Kafka when a message is received on the specified topic.
      *
      * @param message The message received from Kafka
      */
-    @KafkaListener(topics = "${kafka.topic}", groupId = "${kafka.group-id}")
+    @KafkaListener(topics = "${kafka.topic}", groupId = "${kafka.consumerGroupId}")
     public void receive(String message) {
         try {
             log.info("Received message: {}", message);
@@ -72,7 +83,36 @@ public class KafkaReceiver {
         // TODO: Implement tracking logic for workflow runs
     }
 
-    // store github workflow job/run in redis
-    // check status of job if its running
-    // if job hasn't started in x time then send a retry to kafka queue. I should make another queue for that
+    public void sendRetry(String payload){
+
+        String key = "moreMeh";
+
+        // Configure producer properties
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, retryTopic);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+
+        // Create the Kafka producer
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
+
+            // Create a producer record
+            ProducerRecord<String, String> record = new ProducerRecord<>(retryTopic, key, payload);
+
+            // Send the message asynchronously
+            Future<RecordMetadata> future = producer.send(record, (metadata, exception) -> {
+                if (exception != null) {
+                    log.error("Error while producing: " + exception.getMessage());
+                    //TODO create counter here to track errors
+                } else {
+                    log.debug("Message sent to topic=%s, partition=%d, offset=%d%n",
+                            metadata.topic(), metadata.partition(), metadata.offset());
+                }
+            });
+            future.get();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

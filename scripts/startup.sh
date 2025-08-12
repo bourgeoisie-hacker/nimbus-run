@@ -41,4 +41,4 @@ case "$COMPUTE_TYPE" in
     ;;
 esac
 
-exec java ${JAVA_OPTS} -jar /jars/autoscaler-${TYPE}.jar
+java ${JAVA_OPTS} -jar /jars/autoscaler-${TYPE}.jar

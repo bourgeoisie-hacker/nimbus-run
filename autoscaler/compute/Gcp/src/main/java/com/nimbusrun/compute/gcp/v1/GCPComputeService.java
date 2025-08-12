@@ -49,6 +49,7 @@ import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
+import com.nimbusrun.compute.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -455,8 +456,7 @@ public class GCPComputeService extends Compute {
             }
 
         } catch (IOException e) {
-            log.error("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()));
-            log.debug("Failed to query for latest image for action pool %s".formatted(actionPool.getName()), e);
+            Utils.excessiveErrorLog("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()), e, log);
         }
         return null;
     }

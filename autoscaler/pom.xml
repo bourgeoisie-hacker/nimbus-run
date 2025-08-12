@@ -21,7 +21,7 @@
         <module>compute/Gcp</module>
         <module>ActionTracker</module>
         <module>Webhook</module>
-        <module>Autoscale</module>
+        <module>autoscale</module>
     </modules>
 
     <properties>
@@ -30,7 +30,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <skip.jib.plugin>true</skip.jib.plugin>
-        <dockerhub.repository.owner>bourgeoisiehacker</dockerhub.repository.owner>
+        <dockerhub.repository.owner>docker.io/bourgeoisiehacker</dockerhub.repository.owner>
         <jib.main.class>nada</jib.main.class>
     </properties>
 
@@ -42,9 +42,9 @@
                 <version>3.4.4</version>
                 <configuration>
                     <skip>${skip.jib.plugin}</skip>
-                    <dockerClient>
-                        <executable>$(which podman)</executable>
-                    </dockerClient>
+<!--                    <dockerClient>-->
+<!--                        <executable>/opt/podman/bin/podman</executable>-->
+<!--                    </dockerClient>-->
                     <from>
                         <image>openjdk:21-jdk</image>
                     </from>

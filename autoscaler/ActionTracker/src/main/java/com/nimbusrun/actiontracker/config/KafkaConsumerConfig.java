@@ -20,7 +20,7 @@ public class KafkaConsumerConfig {
     @Value("${kafka.broker}")
     private String bootstrapServers;
 
-    @Value("${kafka.group-id}")
+    @Value("${kafka.consumerGroupId}")
     private String groupId;
 
     @Bean

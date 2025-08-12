@@ -78,7 +78,4 @@ public class KafkaReceiver {
         // TODO: Implement tracking logic for workflow runs
     }
 
-    // store github workflow job/run in redis
-    // check status of job if its running
-    // if job hasn't started in x time then send a retry to kafka queue. I should make another queue for that
 }

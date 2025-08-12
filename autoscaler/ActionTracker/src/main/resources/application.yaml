@@ -1,8 +1,6 @@
-spring:
-  application:
-    name: ActionTracker
 
 kafka:
-  topic: test-topic
+  retryTopic: retry
+  webhookTopic: test-topic
   broker: localhost:9092
-  group-id: action-tracker-group
+  consumerGroupId: aws-autoscaler

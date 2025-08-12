@@ -23,7 +23,6 @@ RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
 
 ADD AutoScaler2/target/ /jars/
 ADD scripts/startup.sh /startup.sh
-ADD config_examples/config-aws.yaml /startup.sh
 
 # Use tini for signal handling
 ENTRYPOINT ["/usr/bin/tini", "--"]
