@@ -21,7 +21,7 @@ RUN apt-get update && \
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && \
     chmod +x /usr/local/bin/yq
 
-ADD AutoScaler2/target/ /jars/
+ADD autoscaler/target/ /jars/
 ADD scripts/startup.sh /startup.sh
 
 # Use tini for signal handling
