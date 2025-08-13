@@ -47,4 +47,5 @@ public class BaseConfig {
     private Object compute;
     private String computeType;
     private LogLevel logLevel;
+    private String standalone;
 }

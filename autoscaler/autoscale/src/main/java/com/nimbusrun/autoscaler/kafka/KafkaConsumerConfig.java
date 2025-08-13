@@ -1,5 +1,6 @@
 package com.nimbusrun.autoscaler.kafka;
 
+import com.nimbusrun.Constants;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +17,7 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
-@Profile("!web")
+@Profile("!"+ Constants.STANDALONE_PROFILE_NAME)
 public class KafkaConsumerConfig {
 
     @Value("${kafka.broker}")

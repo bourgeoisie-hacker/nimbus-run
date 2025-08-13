@@ -1,6 +1,9 @@
 package com.nimbusrun;
 
 public class Constants {
+    public static final String ACTION_POOL_NAME_REGEX = "^[a-z0-9-_.]+$";
+
+    public static final String STANDALONE_PROFILE_NAME = "standalone";
     public static final int DEFAULT_TIME_BETWEEN_SCALE_UPS_IN_SECONDS = 2;
     public static final int DEFAULT_MAX_INSTANCES = 10;
     public static final int DELETE_INSTANCE_RUNNER_THRESHOLD = 3;

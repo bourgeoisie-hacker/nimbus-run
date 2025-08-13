@@ -1,7 +1,8 @@
-name: aws-1-autoscaler
-computeType: aws
+
+name: gcp-1-autoscaler
+computeType: gcp
 logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
-standalone: false # "default false"
+standalone: false # "default false". turns off kafka queue listener
 kafka:
   retryTopic: retry
   webhookTopic: webhook
@@ -17,35 +18,32 @@ github:
 compute:
   defaultSettings:
     idleScaleDownInMinutes: 10
-    region: us-east-1
-    subnet: subnet-257dbf7d
-    securityGroup: sg-0189c3298c7be64ca
-    #    credentialsProfile: #<------- if blank it'll just use the default Credentials provider
+    projectId: massive-dynamo-342018
+    region: us-east1
+    subnet: regions/us-east1/subnetworks/default
+    vpc: global/networks/default
+    zones: ["us-east1-b","us-east1-c", "us-east1-d"]
+  #    serviceAccountPath: #<------- if blank it'll just use the default Credentials provider
     diskSettings:
-      type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
       size: "20" # in gigs
-    instanceType: t3.medium
+    instanceType: e2-highcpu-4
     maxInstanceCount: 10 # <--no max
-    keyPairName: Testers
   defaultActionPool:
-    name: defaultPool
+    name: default-pool
   actionPools:
-    - name: t3a.xlarge
-      instanceType: t3a.xlarge
+    - name: n2d-standard-2
+      instanceType: n2d-standard-2
       maxInstanceCount: 1
       subnet: subnet-1234
-      securityGroup: securityGroup-1234
       diskSettings:
-        type: "gp2"
-        size: 4
-    - instanceType: c4.2xlarge
+        size: 12
+    - instanceType: n1-standard-4
       maxInstanceCount: 4
-      name: c4.2xlarge
-    - instanceType: m8gd.medium
-      name: m8gd.medium
+      name: n1-standard-4
+    - instanceType: c4-standard-4-lssd
+      name: c4-standard-4-lssd
       maxInstanceCount: 3
       isNvme: true
-    - instanceType: t3.medium
-      name: t3.medium
+    - instanceType: e2-highcpu-4
+      name: e2-highcpu-4
       maxInstanceCount: 3
-    - name: haha

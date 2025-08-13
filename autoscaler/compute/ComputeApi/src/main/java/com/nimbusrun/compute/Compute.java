@@ -19,6 +19,10 @@ public abstract class Compute {
      */
     public abstract ListInstanceResponse listComputeInstances(ActionPool actionPool);
 
+    /** The key should be the action pool name.
+     *
+     */
+    public abstract Map<String, ListInstanceResponse> listAllComputeInstances();
     /** Creates a compute instance for the associated action pool.
      * Please keep in mind that the compute instance should be discoverable in the {@link Compute#listComputeInstances} method.
      * For example:
@@ -38,7 +42,9 @@ public abstract class Compute {
      * @throws Exception
      */
     public abstract boolean deleteCompute(DeleteInstanceRequest deleteInstanceRequest) throws Exception;
+
     public abstract List<ActionPool> listActionPools() throws Exception;
+
     public abstract ComputeConfigResponse receiveComputeConfigs(Map<String, Object> map, String autoScalerName) throws Exception;
 
     public final String createRunnerLabels(Map<String,String> map) {

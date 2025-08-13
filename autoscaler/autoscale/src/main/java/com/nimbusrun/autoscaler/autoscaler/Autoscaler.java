@@ -6,6 +6,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
+import com.nimbusrun.autoscaler.metrics.MetricsContainer;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.Constants;
@@ -14,9 +15,11 @@ import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.autoscaler.config.ConfigReader;
 import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
+import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
-import io.micrometer.core.instrument.MeterRegistry;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -33,13 +36,15 @@ import java.util.stream.Collectors;
 @Component
 public class Autoscaler {
 
+    public static final Integer MAX_CREATE_FAILURE_RETRIES = 3;
+    public static final Integer MAX_CREATE_POOL_FULL_RETRIES = 1000;
+
     private final ScheduledExecutorService mainThread;
-    public BlockingDeque<ActionPool> receivedRequests = new LinkedBlockingDeque<>();
+    public BlockingDeque<UpscaleRequest> receivedRequests = new LinkedBlockingDeque<>();
     public BlockingDeque<GithubActionJob> receivedRetryRequests = new LinkedBlockingDeque<>();
     private final Map<String, ActionPool> actionPoolMap;
     private final Optional<ActionPool> defaultActionPool;
-    private final MeterRegistry meterRegistry;
-    private final Map<ActionPool, InstanceScalerTimeTracker> timeTrackerMap;
+    private final MetricsContainer metricsContainer;
     private Compute compute;
     private GithubService githubService;
     private ConfigReader configReader;
@@ -47,21 +52,22 @@ public class Autoscaler {
     private final ExecutorService virtualThreadPerTaskExecutor;
     private final Cache<String, AtomicBoolean> runnerLastBusy;
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
-    private final Cache<String, AtomicInteger> runnerIdDeleteCounter;
+    private final Cache<RunnerNameId, AtomicInteger> runnerIdDeleteCounter;
+    private final Cache<String, AtomicInteger> actionPoolUpScale;
 
-    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MeterRegistry meterRegistry) {
+    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MetricsContainer metricsContainer) {
         this.compute = compute;
         this.githubService = githubService;
         this.configReader = configReader;
-        this.meterRegistry = meterRegistry;
+        this.metricsContainer = metricsContainer;
         this.processMessageThread = Executors.newFixedThreadPool(2, Thread.ofVirtual().factory());
-        this.mainThread = Executors.newScheduledThreadPool(1, Thread.ofVirtual().factory());
+        this.mainThread = Executors.newScheduledThreadPool(2, Thread.ofVirtual().factory());
         this.virtualThreadPerTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.actionPoolMap = populateActionPoolMap();
-        this.timeTrackerMap = populateTimeTrackerMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
-
         this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,10,30, TimeUnit.SECONDS);
+        // This operation could take longer
+        this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,10,30, TimeUnit.SECONDS);
         this.processMessageThread.execute(this::processMessage);
         this.processMessageThread.execute(this::processRetryMessage);
 
@@ -77,6 +83,10 @@ public class Autoscaler {
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(30))
                 .build();
+        this.actionPoolUpScale = Caffeine.newBuilder()
+                .maximumSize(1_000_000)
+                .expireAfterWrite(Duration.ofMinutes(1))
+                .build();
     }
 
     @VisibleForTesting
@@ -84,26 +94,27 @@ public class Autoscaler {
         return this.configReader.getActionPoolMap().values().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b, ConcurrentHashMap::new));
     }
 
-    @VisibleForTesting
-    Map<ActionPool, InstanceScalerTimeTracker> populateTimeTrackerMap() {
-        return this.configReader.getActionPoolMap().values()
-                .stream()
-                .collect(Collectors.toMap(Function.identity(), InstanceScalerTimeTracker::new,
-                        (a, b) -> b, ConcurrentHashMap::new));
-    }
 
 
-    public void retryLater(long waitInMilliseconds, ActionPool actionPool) {
+    public void retryLater(long waitInMilliseconds, UpscaleRequest upscaleRequest) {
+        if(upscaleRequest.upScaleReason == UpScaleReason.RETRY_POOL_FULL){
+            metricsContainer.instanceRetriesPoolFull(upscaleRequest.actionPool.getName());
+        }else if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_FAILED_CREATE){
+            metricsContainer.instanceRetriesFailedCreate(upscaleRequest.actionPool.getName());
+        }
         this.virtualThreadPerTaskExecutor.execute(() -> {
             try {
                 Thread.sleep(waitInMilliseconds);
-                this.receivedRequests.offer(actionPool);
+                this.receivedRequests.offer(upscaleRequest);
             } catch (InterruptedException e) {
             }
         });
 
     }
 
+    /**
+     * These are ran together so that we limit the number of times we must interact with github api.
+     */
     public void handleComputeAndRunners() {
         try {
             List<Runner> runners = githubService.listRunnersInGroup();
@@ -116,6 +127,10 @@ public class Autoscaler {
         }catch (Exception e){
             log.error("Failed the main loop ", e);
         }
+    }
+    public void updateInstanceCountGauge(){
+        this.compute.listAllComputeInstances().forEach((key, insts)->
+                metricsContainer.updateInstanceCount(key, insts.instances().size()));
     }
 
     public void updateRunnerInfo(List<Runner> runners) {
@@ -135,8 +150,13 @@ public class Autoscaler {
                 .forEach(key -> {
                     this.virtualThreadPerTaskExecutor.execute(() -> {
                         try {
-                            this.compute.deleteCompute(key);
+                            if(this.compute.deleteCompute(key)){
+                                metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), true);
+                            }else {
+                                metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), false);
+                            }
                         } catch (Exception e) {
+                            metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), false);
                             throw new RuntimeException(e);
                         }
                     });
@@ -154,7 +174,9 @@ public class Autoscaler {
                 .filter(key -> map.get(key).intValue() > Constants.DELETE_INSTANCE_RUNNER_THRESHOLD)
                 .forEach(key -> {
                     this.virtualThreadPerTaskExecutor.execute(() -> {
-                        this.githubService.deleteRunner(key);
+                        if(this.githubService.deleteRunner(key.id())){
+                            log.info("Deleted orphaned runner name: {} id: {}", key.name(), key.id());
+                        }
                     });
                     try {
                         runnerIdDeleteCounter.invalidate(key);
@@ -168,8 +190,8 @@ public class Autoscaler {
         this.instanceIdDeleteCounter.get(deleteInstanceRequest, (key) -> new AtomicInteger(1)).incrementAndGet();
     }
 
-    public void incrementRunnerIdDeleteCounter(String runnerId) {
-        this.runnerIdDeleteCounter.get(runnerId, (key) -> new AtomicInteger(1)).incrementAndGet();
+    public void incrementRunnerIdDeleteCounter(Runner runner) {
+        this.runnerIdDeleteCounter.get(new RunnerNameId(runner.getName(),runner.getId()+""), (key) -> new AtomicInteger(1)).incrementAndGet();
 
     }
 
@@ -186,34 +208,47 @@ public class Autoscaler {
             }catch (Exception e){}
         }
     }
+
     public synchronized void processMessage() {
         while (true) {
             try {
-                ActionPool pool;
-                while ((pool = receivedRequests.poll(1, TimeUnit.MINUTES)) != null) {
-                    InstanceScalerTimeTracker timeTracker = timeTrackerMap.get(pool);
-                    Optional<Long> waitTime = timeTracker.getWaitTimeBeforeScaleUp(Constants.DEFAULT_TIME_BETWEEN_SCALE_UPS_IN_SECONDS);
-                    if (waitTime.isPresent()) {
-                        this.retryLater(waitTime.get(), pool); // So it doesn't occupy the CPU full time
+                UpscaleRequest upscaleRequest;
+                while ((upscaleRequest = receivedRequests.poll(1, TimeUnit.MINUTES)) != null) {
+                    if(upscaleRequest.getRetryCreateFailed() > MAX_CREATE_FAILURE_RETRIES || upscaleRequest.getRetryPoolFull() > MAX_CREATE_POOL_FULL_RETRIES){
+                        log.info("Action pool %s not being expanded due to too many retries. pool full: %s and failed create: %s"
+                                .formatted(upscaleRequest.actionPool.getName(),upscaleRequest.getRetryPoolFull(), upscaleRequest.getRetryCreateFailed()));
                         continue;
                     }
+                    ActionPool pool = upscaleRequest.actionPool;
+                    AtomicInteger numberOfInstances = actionPoolUpScale.get(pool.getName(), (k)-> new AtomicInteger(0));
+                    int maxInstanceCount = pool.getMaxInstances().orElse(Constants.DEFAULT_MAX_INSTANCES);
+
                     ListInstanceResponse listInstanceResponse = compute.listComputeInstances(pool);
 
-                    if (pool.getMaxInstances().orElse(Constants.DEFAULT_MAX_INSTANCES) < listInstanceResponse.instances().size()) {
-                        this.retryLater(1000, pool); // So it doesn't occupy the CPU full time
+                    if (maxInstanceCount <= listInstanceResponse.instances().size()
+                            || maxInstanceCount <= numberOfInstances.get()) {
+                        this.retryLater(5000, upscaleRequest.retryPoolFull()); // So it doesn't occupy the CPU full time
                         continue;
                     }
-                    timeTracker.setLastScaleUpTime(System.currentTimeMillis());
                     ActionPool finalPool = pool;
+                    UpscaleRequest finalUpscaleRequest = upscaleRequest;
+                    numberOfInstances.incrementAndGet();
+
                     this.virtualThreadPerTaskExecutor.execute(() -> {
                         try {
+                            log.info("Attempting to make instance for action pool: {}", finalPool.getName());
                             boolean successful = compute.createCompute(finalPool);
                             if(successful){
-
+                                metricsContainer.instanceCreatedTotal(finalPool.getName(), true);
                             }else{
+                                metricsContainer.instanceCreatedTotal(finalPool.getName(), false);
 
+                                this.retryLater(5000, finalUpscaleRequest.retryCreateFailed());
                             }
+                        } catch (InstanceCreateTimeoutException e){
+                            metricsContainer.instanceCreatedTotal(finalPool.getName(), e.isShouldHaveBeenCreated());
                         } catch (Exception e) {
+                            metricsContainer.instanceCreatedTotal(finalPool.getName(), false);
                             Utils.excessiveErrorLog("Failed to create compute instance for action pool %s due to %s".formatted(finalPool.getName(), e.getMessage()), e, log);
                         }
                     });
@@ -227,9 +262,8 @@ public class Autoscaler {
     public void orphanedRunners(List<Runner> runners){
         runners.stream()
                 .filter(r-> "offline".equalsIgnoreCase(r.getStatus()))
-                .peek(r-> log.info("Incrementing delete counter for orphan runner {}", r.getName()))
-                .map(Runner::getId)
-                .forEach(r-> incrementRunnerIdDeleteCounter(r+""));
+                .peek(r-> log.debug("Incrementing delete counter for orphan runner {}", r.getName()))
+                .forEach(r-> incrementRunnerIdDeleteCounter(r));
     }
     public void scaleDownInstance(Map<String, Runner> runners) {
 
@@ -259,10 +293,10 @@ public class Autoscaler {
                         }
                         if (Boolean.TRUE.equals(runnerComplete)) {
                             log.debug("incrementing delete counter for instance id: {}, name: {} due to runner complete.", instance.getInstanceId(), instance.getInstanceName());
-                            incrementInstanceIdDeleteCounter(new DeleteInstanceRequest(actionPool,instance.getInstanceId(), instance.getExtraProperties()));
+                            incrementInstanceIdDeleteCounter(new DeleteInstanceRequest(actionPool,instance.getInstanceId(), instance.getInstanceName(), instance.getExtraProperties()));
                         } else if (instanceIdleTimeExceeded) {
                             log.debug("incrementing delete counter for instance id: {}, name: {} due to idle time exceeded.", instance.getInstanceId(), instance.getInstanceName());
-                            incrementInstanceIdDeleteCounter(new DeleteInstanceRequest(actionPool,instance.getInstanceId(), instance.getExtraProperties()));
+                            incrementInstanceIdDeleteCounter(new DeleteInstanceRequest(actionPool,instance.getInstanceId(), instance.getInstanceName(), instance.getExtraProperties()));
                         }
                     });
                 } catch (Exception e) {
@@ -298,29 +332,67 @@ public class Autoscaler {
         }
         ActionPool actionPool = null;
         boolean isForGroup = false;
-        for (String label : githubActionJob.getLabels()) {
-            if (label.contains("=") && label.split("=").length == 2) {
-                String key = label.split("=")[0];
-                String value = label.split("=")[1];
-                if (key.equalsIgnoreCase(Constants.ACTION_POOL_LABEL_KEY) && actionPoolMap.containsKey(value.toLowerCase()) && actionPool == null) {
-                    actionPool = actionPoolMap.get(value);
-                }
-                if (key.equalsIgnoreCase(Constants.ACTION_GROUP_LABEL_KEY) && value.equalsIgnoreCase(this.githubService.getRunnerGroupName())) {
-                    isForGroup = true;
-                }
-            }
+        if(githubActionJob.getActionGroupName().isPresent() && githubActionJob.getActionGroupName().get().equalsIgnoreCase(this.githubService.getRunnerGroupName())){
+            isForGroup = true;
         }
-        if (isForGroup ) {
-            ActionPool actionPoolToRun = Optional.ofNullable(actionPool).orElse(defaultActionPool.orElse(null));
-            if(actionPoolToRun == null){
+        if(githubActionJob.getActionPoolName().isPresent() && actionPoolMap.containsKey(githubActionJob.getActionPoolName().get())) {
+            actionPool = actionPoolMap.getOrDefault(githubActionJob.getActionPoolName().get(), defaultActionPool.orElse(null));
+        }
+        if (isForGroup) {
+            if(actionPool == null){
                 log.warn("No action pool specified for workflow and no default action pool configured: {}", githubActionJob.getJsonStr());
                 return false;
             }
-            //(actionPool != null) check for default action pool
             log.info("Received action pool request for {} and runner group: {}", actionPool.getName(), this.githubService.getRunnerGroupName());
-            return receivedRequests.add(actionPool);
+
+            return receivedRequests.add(new UpscaleRequest(actionPool));
         }
         return false;
     }
 
+    public enum UpScaleReason {
+        NEW_REQUEST, RETRY_POOL_FULL, RETRY_FAILED_CREATE;
+
+
+    }
+    public static class UpscaleRequest{
+        @Getter
+        private int retryPoolFull;
+        @Getter
+        private int retryCreateFailed;
+        @Getter
+        private UpScaleReason upScaleReason;
+        private final ActionPool actionPool;
+        public UpscaleRequest(ActionPool actionPool ){
+            this.retryPoolFull = 0;
+            this.retryCreateFailed = 0;
+            this.actionPool = actionPool;
+        }
+
+        public UpscaleRequest retryPoolFull(){
+            upScaleReason = UpScaleReason.RETRY_POOL_FULL;
+            this.retryPoolFull += 1;
+            return this;
+        }
+        public UpscaleRequest retryCreateFailed(){
+            upScaleReason = UpScaleReason.RETRY_POOL_FULL;
+            this.retryCreateFailed += 1;
+            return this;
+        }
+
+
+    }
+    public record RunnerNameId(String name, String id){
+        @Override
+        public boolean equals(Object object) {
+            if (object == null || getClass() != object.getClass()) return false;
+            RunnerNameId that = (RunnerNameId) object;
+            return Objects.equals(id, that.id) && Objects.equals(name, that.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, id);
+        }
+    }
 }

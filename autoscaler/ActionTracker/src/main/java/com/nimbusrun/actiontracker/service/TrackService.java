@@ -1,9 +1,9 @@
 package com.nimbusrun.actiontracker.service;
 
-import com.nimbusrun.Constants;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -24,7 +24,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 public class TrackService {
-    private static Integer MAX_QUEUED_TIME_OF_JOB_IN_MINUTES_DEFAULT = 10;
+
+    private static Integer MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT = 5;
+    private static Integer MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT = 5;
     private static Integer MAX_RETRY_ATTEMPTS_DEFAULT = 3;
     private Map<String, WorkflowJobWatcher> workflowJobWatcherMap = new ConcurrentHashMap<>();
     private BlockingDeque<GithubActionJob> jobQueue = new LinkedBlockingDeque<>();
@@ -32,33 +34,34 @@ public class TrackService {
     private final ExecutorService mainThread;
     private final ScheduledExecutorService runUpdateWatcher;
     private final KafkaProducer kafkaProducer;
+    private final String actionGroupName;
+    private final Integer maxJobInQueuedInMinutes;
+    private final Integer maxTimeBtwRetriesInMinutes;
+    private final Integer maxRetries;
 
-    public TrackService(KafkaProducer kafkaReceiver){
+    public TrackService(KafkaProducer kafkaReceiver, @Value("${github.groupName}") String actionGroupName,
+                        @Value("${retryPolicy.maxJobInQueuedInMinutes:#{null}}") Integer maxJobInQueuedInMinutes,
+                        @Value("${retryPolicy.maxTimeBtwRetriesInMinutes:#{null}}") Integer maxTimeBtwRetriesInMinutes,
+                        @Value("${retryPolicy.maxRetries:#{null}}") Integer maxRetries){
+        this.maxJobInQueuedInMinutes = Optional.ofNullable(maxJobInQueuedInMinutes).orElse(MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT);
+        this.maxTimeBtwRetriesInMinutes = Optional.ofNullable(maxTimeBtwRetriesInMinutes).orElse(MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT);
+        this.maxRetries = Optional.ofNullable(maxRetries).orElse(MAX_RETRY_ATTEMPTS_DEFAULT);
+        this.kafkaProducer = kafkaReceiver;
+        this.actionGroupName = actionGroupName;
         mainThread = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
         runUpdateWatcher = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
 
         mainThread.execute(this::runUpdateWatcher);
         runUpdateWatcher.scheduleWithFixedDelay(this::checkRetryStatus, 30, 20 ,TimeUnit.SECONDS);
-        this.kafkaProducer = kafkaReceiver;
+
     }
 
-    public boolean hasActionPoolLabel(GithubActionJob gj ){
-        return gj.getLabels().stream().anyMatch(label->{
-            String[] labelSplit = label.replace(" ", "").split("=");
-            if(labelSplit.length != 2){
-                return false;
-            }else if(labelSplit[0].equalsIgnoreCase(Constants.ACTION_GROUP_LABEL_KEY)){
-                return true;
-            }
-            return false;
-        });
-    }
     public void runUpdateWatcher(){
             while (true) {
                 try{
                     GithubActionJob gj;
                     while((gj = this.jobQueue.poll(3, TimeUnit.SECONDS)) != null){
-                        if(!hasActionPoolLabel(gj)){
+                        if(gj.getActionGroupName().isEmpty() || !gj.getActionGroupName().get().equalsIgnoreCase(this.actionGroupName)){
                             continue;
                         }
                         GithubActionJob finalGj = gj;
@@ -74,20 +77,18 @@ public class TrackService {
     public void checkRetryStatus(){
             try{
                 Map<String, WorkflowJobWatcher> watcherMap = new HashMap<>(workflowJobWatcherMap);
-                List<WorkflowJobWatcher> watchersToRetry = watcherMap.values().stream().filter(w->
-                    w.getGithubActionJobs().stream().noneMatch(i-> WorkflowJobStatus.isActiveStatus(i.getStatus()) )
-                ).toList();
+                List<WorkflowJobWatcher> watchersToRetry = watcherMap.values().stream().filter(this::safeToRetry).toList();
                 for(WorkflowJobWatcher w : watchersToRetry){
                     try{
                         Optional<GithubActionJob> opt = w.getGithubActionJobs().stream().filter(gj -> gj.getStatus() == WorkflowJobStatus.QUEUED).findFirst();
                         if(opt.isPresent()){
-
+                            long minutesSinceStart = TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - opt.get().getStartedAt());
                             RetryTracker retryTracker = retryTrackerMap.computeIfAbsent(w.getJobId(), (key)-> new RetryTracker(w.getJobId(),w.getRunId()));
                             Optional<Long> latestTime = retryTracker.getRetryTimes().stream().max(Comparator.comparingLong(i->i));
-                            if(latestTime.isEmpty() || shouldRetry(latestTime.get(), retryTracker.getRetryTimes().size())){{
+                            if(minutesSinceStart > this.maxJobInQueuedInMinutes && (latestTime.isEmpty() || shouldRetry(latestTime.get(), retryTracker.getRetryTimes().size()))){{
                                 //Because I don't want github api to be everywhere if we can avoid it we should instead
                                 // have the autoscaler check whether or not a job should be retried. Action Tracker will just be dumb
-
+                                log.info("Retrying {}", opt.get().getJsonStr().replace(" ", ""));
                                 kafkaProducer.sendRetry(opt.get().getJsonStr());
                                 retryTracker.getRetryTimes().add(System.currentTimeMillis());
                             }}
@@ -102,11 +103,16 @@ public class TrackService {
             }
     }
 
+    public boolean safeToRetry(WorkflowJobWatcher watcher){
+        boolean hasQueued = watcher.getGithubActionJobs().stream().anyMatch(gj -> WorkflowJobStatus.QUEUED == gj.getStatus());
+        long startedOperations = watcher.getGithubActionJobs().stream().filter(gj -> WorkflowJobStatus.isActiveStatus(gj.getStatus())).count();
+        return hasQueued && startedOperations==0;
+    }
     public boolean shouldRetry(long lastRetry, long retryAttempts){
         Instant lastAttempt = Instant.ofEpochMilli(lastRetry);
         Instant now = Instant.now();
         int elaspedTime = Duration.between(lastAttempt, now).toMinutesPart();
-        if(elaspedTime > MAX_QUEUED_TIME_OF_JOB_IN_MINUTES_DEFAULT && retryAttempts > MAX_RETRY_ATTEMPTS_DEFAULT){
+        if(elaspedTime > this.maxTimeBtwRetriesInMinutes && retryAttempts > this.maxRetries){
             return true;
         }
         return false;

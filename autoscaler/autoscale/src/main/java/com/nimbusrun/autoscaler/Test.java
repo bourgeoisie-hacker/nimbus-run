@@ -1,10 +1,7 @@
 package com.nimbusrun.autoscaler;
-
-import com.google.cloud.compute.v1.Region;
-import com.google.cloud.compute.v1.RegionsClient;
-import com.google.cloud.compute.v1.Zone;
-import com.google.cloud.compute.v1.ZonesClient;
-import com.google.protobuf.InvalidProtocolBufferException;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -14,10 +11,14 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class Test {
@@ -26,19 +27,21 @@ public class Test {
         map.put("blah", null);
         System.out.println(map.containsKey("blah"));
 //        listRegions("massive-dynamo-342018");
-        String payload = Files.readString(Paths.get("webhooks-examples/test-workflow-job-queued.json"));
-        sendRetry(payload, "webhook");
+        String payload = Files.readString(Paths.get("webhooks-examples/test-workflow-job-queued-gcp.json"));
+        System.out.println("al da-adsf5".matches("^[a-z0-9-]+$"));
+        List<String> ff = new ArrayList<>();
+        System.out.println(ff.stream().noneMatch(fff-> false));
+
+        LoadingCache<Integer,Integer> loadingCache = Caffeine.newBuilder().maximumSize(20).expireAfterWrite(1, TimeUnit.SECONDS).build(key->new Random().nextInt());
+        Cache<Integer,Integer> cache = Caffeine.newBuilder().maximumSize(20).expireAfterWrite(1, TimeUnit.HOURS).build();
+        System.out.println(loadingCache.get(4));
+        System.out.println(loadingCache.get(4));
+        System.out.println(cache.get(4,key->new Random().nextInt()));
+        System.out.println(cache.get(4,key->new Random().nextInt()));
+
+        sendRetry(payload.replace("\n",""), "webhook");
     }
 
-    public static void listRegions(String projectId) throws IOException {
-
-        try (ZonesClient zonesClient = ZonesClient.create()) {
-            for (Zone zone : zonesClient.list(projectId).iterateAll()) {
-                String regionName = zone.getRegion().substring(zone.getRegion().lastIndexOf("/")+1);
-                System.out.printf("Region: %s, Zone: %s (status: %s)%n", regionName, zone.getName() , zone.getStatus());
-            }
-        }
-    }
 
     public static void sendRetry(String payload, String topic){
         String bootstrapServers = "localhost:9092"; // Update with your Kafka broker(s)

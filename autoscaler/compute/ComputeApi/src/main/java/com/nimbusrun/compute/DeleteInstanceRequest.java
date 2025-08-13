@@ -6,11 +6,13 @@ import java.util.Objects;
 public class DeleteInstanceRequest {
     private final ActionPool actionPool;
     private final String instanceId;
+    private final String instanceName;
     private final Object extraProperties;
 
-    public DeleteInstanceRequest(ActionPool actionPool, String instanceId, Object extraProperties) {
+    public DeleteInstanceRequest(ActionPool actionPool, String instanceId, String instanceName, Object extraProperties) {
         this.actionPool = actionPool;
         this.instanceId = instanceId;
+        this.instanceName = instanceName;
         this.extraProperties = extraProperties;
     }
 

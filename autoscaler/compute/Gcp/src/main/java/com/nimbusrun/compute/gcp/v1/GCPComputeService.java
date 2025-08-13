@@ -50,6 +50,7 @@ import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.Utils;
+import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -106,7 +107,7 @@ public class GCPComputeService extends Compute {
     public Optional<InstanceStaticInfo> findInstanceAcrossZones(GCPConfig.ActionPool actionPool, String instanceId) throws IOException {
         long id = Long.parseLong(instanceId);
         for (String zone : actionPool.getZones()) {
-            try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool)) {
+            try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool.getServiceAccountPathOpt())) {
                 ListInstancesRequest request = ListInstancesRequest.newBuilder()
                         .setProject(actionPool.getProjectId())
                         .setZone(zone)
@@ -138,7 +139,7 @@ public class GCPComputeService extends Compute {
             instanceStaticInfo = info.get();
         }
 
-        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool)) {
+        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool.getServiceAccountPathOpt())) {
             com.google.cloud.compute.v1.DeleteInstanceRequest deleteInstanceRequest = com.google.cloud.compute.v1.DeleteInstanceRequest.newBuilder()
                     .setProject(actionPool.getProjectId())
                     .setInstance(instanceStaticInfo.getInstanceId())
@@ -179,7 +180,7 @@ public class GCPComputeService extends Compute {
     public ListInstanceResponse listComputeInstances(ActionPool pool) {
         GCPConfig.ActionPool actionPool = this.gcpActionPool.get(pool.getName());
         List<ListInstanceResponse.Instance> instances = new ArrayList<>();
-        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool)) {
+        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool.getServiceAccountPathOpt())) {
             // Use the `setMaxResults` parameter to limit the number of results
             // that the API returns per response page.
             AggregatedListInstancesRequest aggregatedListInstancesRequest = AggregatedListInstancesRequest
@@ -210,11 +211,24 @@ public class GCPComputeService extends Compute {
     }
 
     @Override
+    public Map<String, ListInstanceResponse> listAllComputeInstances() {
+        Map<String, ListInstanceResponse> responseMap = new HashMap<>();
+        try {
+            for (String actionPoolName : this.gcpActionPool.keySet()) {
+                responseMap.put(actionPoolName, listComputeInstances(this.gcpActionPool.get(actionPoolName).toAutoScalerActionPool()));
+            }
+        }catch (Exception e){
+            Utils.excessiveErrorLog("Failed to list all compute instances",e, log);
+        }
+        return responseMap;
+    }
+
+    @Override
     public boolean createCompute(ActionPool autoscalerActionPool) {
         //TODO create a counter for when an instance is created
         String instanceName = createInstanceName();
         GCPConfig.ActionPool actionPool = this.gcpActionPool.get(autoscalerActionPool.getName());
-        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool)) {
+        try (InstancesClient instancesClient = GCPClients.createInstancesClient(actionPool.getServiceAccountPathOpt())) {
             Random random = new Random();
 
             String zone = actionPool.getZones().get(random.nextInt(actionPool.getZones().size()));
@@ -267,7 +281,7 @@ public class GCPComputeService extends Compute {
 
             // Invoke the API with the request object and wait for the operation to complete.
             Operation response = instancesClient.insertAsync(insertInstanceRequest)
-                    .get(10, TimeUnit.MINUTES);
+                    .get(15, TimeUnit.MINUTES);
 
             // Check for errors.
             if (response.hasError()) {
@@ -285,6 +299,7 @@ public class GCPComputeService extends Compute {
             log.warn("Instance creation thread was interrupted for %s. The instance might have been created or not. ¯\\_(ツ)_/¯".formatted(instanceName) );
         } catch (TimeoutException e) {
             log.warn("Instance creation response timed out for %s. The instance might have been created or not. ¯\\_(ツ)_/¯".formatted(instanceName) );
+            throw new InstanceCreateTimeoutException(true);
         }
         return false;
     }
@@ -415,7 +430,7 @@ public class GCPComputeService extends Compute {
      */
     public Map<String, RegionZones> lookupRegionZone(GCPConfig.ActionPool actionPool) throws IOException {
         Map<String,RegionZones> regionZones = new HashMap<>();
-        try (ZonesClient zonesClient = GCPClients.createZonesClient(actionPool)) {
+        try (ZonesClient zonesClient = GCPClients.createZonesClient(actionPool.getServiceAccountPathOpt())) {
             for (Zone zone : zonesClient.list(actionPool.getProjectId()).iterateAll()) {
                 String regionName = zone.getRegion().substring(zone.getRegion().lastIndexOf("/")+1);
                 RegionZones rz = regionZones.computeIfAbsent(regionName, (key)-> new RegionZones(regionName));

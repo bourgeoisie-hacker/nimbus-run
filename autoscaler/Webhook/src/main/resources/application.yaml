@@ -1,8 +1,0 @@
-name:
-kafka:
-  webhookTopic: test-topic
-  broker: localhost:9092
-
-
-github:
-  webhookSecret: test

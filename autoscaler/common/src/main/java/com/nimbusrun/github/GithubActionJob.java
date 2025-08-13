@@ -1,6 +1,7 @@
 package com.nimbusrun.github;
 
 
+import com.nimbusrun.Constants;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -23,9 +24,11 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
     private final Long completedAt;
     private final String runUrl;
     private final List<String> labels;
+    private final String actionPoolName;
+    private final String actionGroupName;
     private final String jsonStr;
 
-    public GithubActionJob(String id, String runId, WorkflowJobStatus status, String htmlUrl, String name, String conclusion, Long startedAt, Long completedAt, String runUrl, List<String> labels, String jsonStr) {
+    public GithubActionJob(String id, String runId, WorkflowJobStatus status, String htmlUrl, String name, String conclusion, Long startedAt, Long completedAt, String runUrl, List<String> labels, String actionPoolName, String actionGroupName, String jsonStr) {
         this.id = id;
         this.runId = runId;
         this.status = status;
@@ -36,6 +39,8 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         this.completedAt = completedAt;
         this.runUrl = runUrl;
         this.labels = labels;
+        this.actionPoolName = actionPoolName;
+        this.actionGroupName = actionGroupName;
         this.jsonStr = jsonStr;
     }
 
@@ -77,13 +82,31 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         for(int i = 0; i < labels.length(); i++){
             labelList.add(labels.getString(i));
         }
+        String actionGroupName = labelList.stream().map(l->findActionGroup(l, Constants.ACTION_GROUP_LABEL_KEY)).filter(Optional::isPresent).map(Optional::get).findFirst().orElse(null);
+        String actionPoolName = labelList.stream().map(l->findActionGroup(l, Constants.ACTION_POOL_LABEL_KEY)).filter(Optional::isPresent).map(Optional::get).findFirst().orElse(null);
 
         return new GithubActionJobBuilder().withId(id).withRunId(runId).withStatus(status)
                 .withHtmlUrl(htmlUrl).withName(name).withConclusion(conclusion).withStartedAt(startedAt)
                 .withCompletedAt(completedAt)
                 .withRunUrl(runUrl)
                 .withLabels(labelList)
+                .withActionGroupName(actionGroupName)
+                .withActionPoolName(actionPoolName)
                 .withJsonStr(object.toString()).build();
+    }
+
+    public static Optional<String> findActionGroup(String label, String expectedKey){
+        String cleanedLabel = label.trim().replace(" ", "");
+        String[] labelParts = cleanedLabel.split("=");
+        if(labelParts.length != 2){
+            return Optional.empty();
+        }
+        String key = labelParts[0];
+        String value = labelParts[1];
+        if (key.equalsIgnoreCase(expectedKey) ) {
+            return Optional.of(value);
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -147,6 +170,14 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         return labels;
     }
 
+    public Optional<String> getActionPoolName() {
+        return Optional.ofNullable(actionPoolName);
+    }
+
+    public Optional<String> getActionGroupName() {
+        return Optional.ofNullable(actionGroupName);
+    }
+
     public static final class GithubActionJobBuilder {
         private String id;
         private String runId;
@@ -158,6 +189,8 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         private Long completedAt;
         private String runUrl;
         private List<String> labels;
+        private String actionPoolName;
+        private String actionGroupName;
         private String jsonStr;
 
         private GithubActionJobBuilder() {
@@ -217,13 +250,23 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
             return this;
         }
 
+        public GithubActionJobBuilder withActionPoolName(String actionPoolName) {
+            this.actionPoolName = actionPoolName;
+            return this;
+        }
+
+        public GithubActionJobBuilder withActionGroupName(String actionGroupName) {
+            this.actionGroupName = actionGroupName;
+            return this;
+        }
+
         public GithubActionJobBuilder withJsonStr(String jsonStr) {
             this.jsonStr = jsonStr;
             return this;
         }
 
         public GithubActionJob build() {
-            return new GithubActionJob(id, runId, status, htmlUrl, name, conclusion, startedAt, completedAt, runUrl, labels, jsonStr);
+            return new GithubActionJob(id, runId, status, htmlUrl, name, conclusion, startedAt, completedAt, runUrl, labels, actionPoolName, actionGroupName, jsonStr);
         }
     }
 }

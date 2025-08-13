@@ -116,8 +116,7 @@
     <profiles>
         <profile>
             <id>aws</id>
-            <activation>
-                <activeByDefault>true</activeByDefault></activation>
+            <activation><activeByDefault>true</activeByDefault></activation>
             <dependencies>
                 <dependency>
                     <groupId>com.nimbusrun</groupId>

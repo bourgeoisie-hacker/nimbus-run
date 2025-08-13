@@ -20,7 +20,7 @@
     "steps": [],
     "check_run_url": "https://api.github.com/repos/bourgeoisie-whacker/test/check-runs/47696465142",
     "labels": [
-      "action-pool=t3.medium",
+      "action-pool=n2d-standard-2",
       "action-group=prod"
     ],
     "runner_id": null,

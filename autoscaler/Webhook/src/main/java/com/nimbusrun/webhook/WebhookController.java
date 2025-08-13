@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 
 @RestController
-@RequestMapping("/webhook")
+@RequestMapping("webhook")
 @Slf4j
 public class WebhookController {
 
@@ -23,16 +23,18 @@ public class WebhookController {
   }
 
   @PostMapping()
-  public ResponseEntity<Object> webhook(@RequestBody String payload, @RequestHeader(WebhookVerifier.SECRET_HEADER) String signature) {
+  public ResponseEntity<Object> webhook(@RequestBody String payload, @RequestHeader(value = WebhookVerifier.SECRET_HEADER, required = false) String signature) {
     try {
       JSONObject json = new JSONObject(payload);
       log.debug("Recieved: \n" + payload.replace("\n","\n\t"));
 
       if(webhookSecret != null && !WebhookVerifier.verifySignature(payload.getBytes(), webhookSecret, signature)){
-
+        log.debug("Failed to verified webhook "+ payload);
         return new ResponseEntity<>(HttpStatusCode.valueOf(201));
       }
       if (!json.has("workflow_job") && !json.has("workflow_run")) {
+        log.debug("Doesn't have workflow_(job|run) "+ payload);
+
         return new ResponseEntity<>(HttpStatusCode.valueOf(201));
       }
       kakfaService.receive(payload);

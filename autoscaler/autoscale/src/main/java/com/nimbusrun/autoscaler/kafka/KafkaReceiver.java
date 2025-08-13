@@ -1,5 +1,6 @@
 package com.nimbusrun.autoscaler.kafka;
 
+import com.nimbusrun.Constants;
 import com.nimbusrun.autoscaler.autoscaler.Autoscaler;
 import com.nimbusrun.github.GithubActionJob;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
-@Profile("!web")
+@Profile("!"+Constants.STANDALONE_PROFILE_NAME)
 public class KafkaReceiver {
 
     private final Autoscaler autoscaler;

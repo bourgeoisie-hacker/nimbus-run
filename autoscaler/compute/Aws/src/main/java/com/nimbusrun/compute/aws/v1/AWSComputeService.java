@@ -12,7 +12,6 @@ import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -35,7 +34,7 @@ public class AWSComputeService extends Compute {
     private Map<String, AwsConfig.ActionPool> awsActionPool = new HashMap<>();
     private final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
     private final String APPLICATION_NAME_LABEL_KEY = "NimbusRun";
-
+    private Map<String, Ec2Client> actionPoolToEc2Client = new HashMap<>();
     private final Cache<Region, String> regionUbuntuAmiCache;
     //    private String applicationName;
     public AWSComputeService(GithubApi githubService) {
@@ -52,45 +51,60 @@ public class AWSComputeService extends Compute {
     public ListInstanceResponse listComputeInstances(ActionPool autoScalePool) {
         List<Instance> instanceIds = new ArrayList<>();
         AwsConfig.ActionPool actionPool = this.awsActionPool.get(autoScalePool.getName());
-        try (Ec2Client ec2 = Ec2Client.builder()
-                .region(Region.of(actionPool.getRegion()))
-                .credentialsProvider(DefaultCredentialsProvider.create())
-                .build()) {
-
-            Filter notTerminatedFilter = Filter.builder().name("instance-state-name")
-                    .values(
-                            InstanceStateName.PENDING.toString(),
-                            InstanceStateName.RUNNING.toString(),
+        Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
+        Filter notTerminatedFilter = Filter.builder().name("instance-state-name")
+                .values(
+                        InstanceStateName.PENDING.toString(),
+                        InstanceStateName.RUNNING.toString(),
 //                            InstanceStateName.SHUTTING_DOWN.toString(),
-                            InstanceStateName.STOPPING.toString(),
-                            InstanceStateName.STOPPED.toString()
-                    )
-                    .build();
-            List<Filter> filters = new ArrayList<>();
-            filters.add(notTerminatedFilter);
-            filters.addAll(tagFilters(actionPool.getName()));
-            DescribeInstancesRequest request = DescribeInstancesRequest.builder()
-                    .filters(filters)
-                    .build();
+                        InstanceStateName.STOPPING.toString(),
+                        InstanceStateName.STOPPED.toString()
+                )
+                .build();
+        List<Filter> filters = new ArrayList<>();
+        filters.add(notTerminatedFilter);
+        filters.addAll(tagFilters(actionPool.getName()));
+        DescribeInstancesRequest request = DescribeInstancesRequest.builder()
+                .filters(filters)
+                .build();
 
-            DescribeInstancesResponse response = ec2.describeInstances(request);
+        DescribeInstancesResponse response = ec2.describeInstances(request);
 
-            for (Reservation reservation : response.reservations()) {
-                for (Instance instance : reservation.instances()) {
-                    instanceIds.add(instance);
-                }
+        for (Reservation reservation : response.reservations()) {
+            for (Instance instance : reservation.instances()) {
+                instanceIds.add(instance);
             }
         }
+
+
         return new ListInstanceResponse(instanceIds.stream()
-                .map(i->{
+                .map(i -> {
                     String name = i.tags()
                             .stream()
-                            .filter(t->t.key().equalsIgnoreCase("name"))
+                            .filter(t -> t.key().equalsIgnoreCase("name"))
                             .map(Tag::value)
                             .findAny()
-                            .orElse(i.instanceId()+"");
+                            .orElse(i.instanceId() + "");
                     return new ListInstanceResponse.Instance(name, i.instanceId(), name, i.launchTime().toEpochMilli());
                 }).toList());
+    }
+
+    /**
+     * Unfortunately we cannot aggregate the regions and list all the instance for that region with the {@link AWSComputeService#DEFAULT_INSTANCE_LABELS}.
+     * because each action pool could be using a user/role restricted to just one region. :(.
+     *
+     * @return a map of action pool name to instances associated with them
+     */
+    @Override
+    public Map<String, ListInstanceResponse> listAllComputeInstances() {
+        Map<String, ListInstanceResponse> responseMap = new HashMap<>();
+        try {
+            for (String actionPoolName : this.awsActionPool.keySet()) {
+                responseMap.put(actionPoolName, listComputeInstances(this.awsActionPool.get(actionPoolName).toAutoScalerActionPool()));
+            }
+        } catch (Exception e) {
+        }
+        return responseMap;
     }
 
 
@@ -98,11 +112,8 @@ public class AWSComputeService extends Compute {
     public boolean deleteCompute(DeleteInstanceRequest deleteInstanceRequest) {
         AwsConfig.ActionPool actionPool = this.awsActionPool.get(deleteInstanceRequest.getActionPool().getName());
 
-        try (Ec2Client ec2 = Ec2Client.builder()
-                .region(regionFromString(actionPool.getRegion()).get())
-                .credentialsProvider(DefaultCredentialsProvider.create())
-                .build()) {
-
+        try  {
+            Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
             TerminateInstancesRequest request = TerminateInstancesRequest.builder()
                     .instanceIds(deleteInstanceRequest.getInstanceId())
                     .build();
@@ -137,7 +148,13 @@ public class AWSComputeService extends Compute {
         clientConfig = awsConfig;
         this.awsActionPool = actionPools.stream().collect(Collectors.toMap(AwsConfig.ActionPool::getName, Function.identity(), (a, b) -> a));
         DEFAULT_INSTANCE_LABELS.put(APPLICATION_NAME_LABEL_KEY, autoScalerName);
+        generateEc2ClientPerActionPool(this.awsActionPool);
         return new ComputeConfigResponse(errors, warnings, actionPools.stream().map(AwsConfig.ActionPool::toAutoScalerActionPool).toList());
+    }
+    public void generateEc2ClientPerActionPool(Map<String, AwsConfig.ActionPool> actionPoolMap){
+        for(AwsConfig.ActionPool ap : actionPoolMap.values() ){
+            this.actionPoolToEc2Client.put(ap.getName(),AwsClients.ec2Client(ap.getCredentialsProfileOpt(), Region.of(ap.getRegion())));
+        }
     }
 
 
@@ -185,18 +202,6 @@ public class AWSComputeService extends Compute {
     }
 
 
-    private Ec2Client createEc2Client(AwsConfig.ActionPool actionPool) {
-
-        Ec2ClientBuilder builder = Ec2Client.builder()
-                .region(Region.of(actionPool.getRegion()));
-        if (actionPool.getCredentialsProfileOpt().isPresent()) {
-            return builder
-                    .credentialsProvider(ProfileCredentialsProvider.create(actionPool.getCredentialsProfile()))
-                    .build();
-        } else {
-            return builder.build();
-        }
-    }
 
     private List<Tag> generateInstanceTags(String actionPoolName){
         return generateInstanceTags(actionPoolName, null);
@@ -221,13 +226,13 @@ public class AWSComputeService extends Compute {
         AwsConfig.ActionPool actionPool = this.awsActionPool.get(autoScalerActionPool.getName());
 
         // Configure AWS client
-        Ec2Client ec2 = createEc2Client(actionPool);
+        Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
 
         try {
 
             Region region = regionFromString(actionPool.getRegion()).get();
             // Set up instance parameters
-            String amiId = regionUbuntuAmiCache.get(region, (r)->latestAmi(r).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
+            String amiId = regionUbuntuAmiCache.get(region, (r)->latestAmi(ec2).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
             if(amiId == null){
                 log.error("Ubuntu AMI does not exist for region {}", actionPool.getRegion());
                 return false;
@@ -302,11 +307,8 @@ public class AWSComputeService extends Compute {
     public Optional<Region> regionFromString(String region){
         return Region.regions().stream().filter(r->r.id().equalsIgnoreCase(region)).findAny();
     }
-    public Optional<String> latestAmi(Region region){
-        try (Ec2Client ec2Client = Ec2Client.builder()
-                .region(region)
-                .build()) {
-
+    public Optional<String> latestAmi(Ec2Client ec2Client){
+        try  {
             DescribeImagesRequest request = DescribeImagesRequest.builder()
                     .owners("099720109477") // Canonical's owner ID. Company managing the images.
                     .filters(

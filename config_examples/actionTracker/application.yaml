@@ -1,0 +1,15 @@
+name: ActionTracker
+retryPolicy:
+  maxJobInQueuedInMinutes: 6
+  maxTimeBtwRetriesInMinutes: 6
+  maxRetries: 3
+
+kafka:
+  retryTopic: retry
+  webhookTopic: webhook
+  broker: localhost:9092
+  consumerGroupId: actiontracker
+github:
+  groupName: "prod"
+server:
+  port: 8081

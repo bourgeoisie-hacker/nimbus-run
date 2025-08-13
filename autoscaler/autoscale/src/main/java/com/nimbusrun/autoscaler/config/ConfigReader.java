@@ -1,9 +1,9 @@
 package com.nimbusrun.autoscaler.config;
 
+import com.nimbusrun.Constants;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.ComputeConfigResponse;
-import com.nimbusrun.compute.Constants;
 import com.nimbusrun.Utils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +33,7 @@ public class ConfigReader {
     public static final String KAFKA_BROKER_KEY = "broker";
     public static final String GITHUB_KEY = "github";
     public static final String NAME_KEY = "name";
+    public static final String STANDALONE_KEY = "standalone";
     public static final String LOG_LEVEL_KEY = "logLevel";
     public static final String COMPUTE_TYPE = "computeType";
     public static final String KAFKA_RETRY_TOPIC_KEY = "retryTopic";
@@ -109,6 +110,9 @@ public class ConfigReader {
         if(defaultCount > 1){
             errors.add("More than one default action pool");
         }
+        actionPools.stream().map(ActionPool::getName).filter(name -> !name.matches(Constants.ACTION_POOL_NAME_REGEX)).forEach(name->{
+            errors.add("Action pool \"%s\" does not match the pattern %s. Names should be lowercase, no spaces, no special, alphanumeric, and dashes/underscores/periods are allowed".formatted(name,Constants.ACTION_POOL_NAME_REGEX));
+        });
         return errors;
     }
 
@@ -119,7 +123,7 @@ public class ConfigReader {
     }
     public static List<String> validateBaseConfig(BaseConfig baseConfig){
         List<String> errors = new ArrayList<>();
-        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration");
+        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration".formatted(name));
         notNull(baseConfig::getName,NAME_KEY,addToErrorConsumer);
         notNull(baseConfig::getCompute,COMPUTE_KEY,addToErrorConsumer);
         notNull(baseConfig::getComputeType,COMPUTE_TYPE,addToErrorConsumer);

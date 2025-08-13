@@ -41,7 +41,7 @@ public class ActionTrackerConfigReader {
         }catch (Exception e){
             Utils.excessiveErrorLog("Error setting up Configurations occurred due to %s.".formatted(e.getMessage()), e, log);
             System.exit(1);
-            throw new RuntimeException();// unreachable
+            throw new RuntimeException();// unreachable but compiler shuts up
         }
     }
 
@@ -75,7 +75,7 @@ public class ActionTrackerConfigReader {
     }
     public static List<String> validateBaseConfig(ActionTrackerConfig baseConfig){
         List<String> errors = new ArrayList<>();
-        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration");
+        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration".formatted(name));
         notNull(baseConfig::getName,NAME_KEY,addToErrorConsumer);
         notNull(baseConfig::getKafka,KAFKA_KEY,addToErrorConsumer);
         if(baseConfig.getKafka() != null){

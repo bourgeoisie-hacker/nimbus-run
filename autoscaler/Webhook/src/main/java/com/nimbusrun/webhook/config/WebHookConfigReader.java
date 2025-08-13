@@ -70,7 +70,7 @@ public class WebHookConfigReader {
     }
     public static List<String> validateBaseConfig(WebHookConfig baseConfig){
         List<String> errors = new ArrayList<>();
-        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration");
+        Consumer<String> addToErrorConsumer = (name) -> errors.add("%s missing configuration".formatted(name));
         notNull(baseConfig::getName,NAME_KEY,addToErrorConsumer);
         notNull(baseConfig::getKafka,KAFKA_KEY,addToErrorConsumer);
         if(baseConfig.getKafka() != null){

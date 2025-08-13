@@ -36,6 +36,7 @@ public class KafkaService {
 
 
     public void receive(String payload) {
+        log.debug("Adding to Payload");
         queue.add(payload);
     }
 
@@ -56,7 +57,7 @@ public class KafkaService {
     public void send(String payload){
 
         String key = "meh";
-
+        log.debug("%s sending payload: %s".formatted(kafakaTopic, payload));
 
         // Configure producer properties
         Properties props = new Properties();

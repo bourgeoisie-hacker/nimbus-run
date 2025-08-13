@@ -1,5 +1,6 @@
 package com.nimbusrun.autoscaler.controller;
 
+import com.nimbusrun.Constants;
 import com.nimbusrun.Utils;
 import com.nimbusrun.autoscaler.autoscaler.Autoscaler;
 import com.nimbusrun.github.GithubActionJob;
@@ -13,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
-@Profile("web")
+@Profile(Constants.STANDALONE_PROFILE_NAME)
 @RestController
 @RequestMapping("/webhook")
 @Slf4j
@@ -27,7 +28,7 @@ public class WebhookController {
   }
 
   @PostMapping()
-  public ResponseEntity<Object> webhook(@RequestBody String payload, @RequestHeader(WebhookVerifier.SECRET_HEADER) String signature) {
+  public ResponseEntity<Object> webhook(@RequestBody String payload, @RequestHeader(value = WebhookVerifier.SECRET_HEADER, required = false) String signature) {
     try {
       JSONObject json = new JSONObject(payload);
       log.debug("Recieved: \n" + payload.replace("\n","\n\t"));
