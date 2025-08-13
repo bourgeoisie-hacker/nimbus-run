@@ -21,7 +21,7 @@ public class WebhookController {
 
   private final Autoscaler autoscaler;
   private final String secret;
-  public WebhookController(Autoscaler autoscaler, @Value("${github.webhook.secret:#{null}}") String secret) {
+  public WebhookController(Autoscaler autoscaler, @Value("${github.webhookSecret:#{null}}") String secret) {
     this.secret = secret;
     this.autoscaler = autoscaler;
   }

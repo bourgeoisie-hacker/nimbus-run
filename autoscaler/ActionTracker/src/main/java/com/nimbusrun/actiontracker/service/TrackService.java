@@ -45,9 +45,9 @@ public class TrackService {
     public boolean hasActionPoolLabel(GithubActionJob gj ){
         return gj.getLabels().stream().anyMatch(label->{
             String[] labelSplit = label.replace(" ", "").split("=");
-            if(labelSplit.length != 3){
+            if(labelSplit.length != 2){
                 return false;
-            }else if(labelSplit[0] == Constants.ACTION_GROUP_LABEL_KEY){
+            }else if(labelSplit[0].equalsIgnoreCase(Constants.ACTION_GROUP_LABEL_KEY)){
                 return true;
             }
             return false;
@@ -57,9 +57,9 @@ public class TrackService {
             while (true) {
                 try{
                     GithubActionJob gj;
-                    while((gj = this.jobQueue.poll(1, TimeUnit.HOURS)) != null){
+                    while((gj = this.jobQueue.poll(3, TimeUnit.SECONDS)) != null){
                         if(!hasActionPoolLabel(gj)){
-                            return;
+                            continue;
                         }
                         GithubActionJob finalGj = gj;
                         WorkflowJobWatcher watcher = workflowJobWatcherMap.computeIfAbsent(gj.getId(),
@@ -89,6 +89,7 @@ public class TrackService {
                                 // have the autoscaler check whether or not a job should be retried. Action Tracker will just be dumb
 
                                 kafkaProducer.sendRetry(opt.get().getJsonStr());
+                                retryTracker.getRetryTimes().add(System.currentTimeMillis());
                             }}
 
                         }

@@ -17,7 +17,7 @@ public class WebhookController {
   private final KafkaService kakfaService;
   private final String webhookSecret;
 
-  public WebhookController(KafkaService kafkaService, @Value("${github.webhook.secret:#{null}}") String webhookSecret) {
+  public WebhookController(KafkaService kafkaService, @Value("${github.webhookSecret:#{null}}") String webhookSecret) {
     this.kakfaService = kafkaService;
     this.webhookSecret = webhookSecret;
   }
