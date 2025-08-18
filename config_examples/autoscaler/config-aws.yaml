@@ -1,38 +1,99 @@
+# Application name for metrics reporting
 name: aws-1-autoscaler
-computeType: aws
-logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
-standalone: true # "default false". turns off kafka queue listener
 
+# Compute backend to use (e.g., aws, gcp, azure)
+computeType: aws
+
+# Application log level (info | warn | debug | fatal).
+# These defaults can be overridden via Spring Boot properties.
+logLevel: "info"
+
+# When true, runs in standalone mode:
+#  • Disables the Kafka queue listener
+#  • Enables the HTTP webhook endpoint at /webhook
+# Note: Standalone mode assumes no other Nimbus Run components are active.
+standalone: false
+
+# Kafka integration settings
 kafka:
+  # Topic where failed or delayed jobs will be retried
   retryTopic: retry
+
+  # Topic to consume incoming GitHub Actions webhook events
   webhookTopic: webhook
+
+  # Kafka broker address
   broker: localhost:9092
+
+  # Unique consumer group ID for the autoscaler
+  # Changing this may cause in-flight jobs to be reprocessed.
   consumerGroupId: aws-autoscaler
 
+# GitHub integration settings
 github:
+  # Environment or runner group label in GitHub
   groupName: "prod"
-  organizationName: "bourgeoisie-whacker"
-  token: ${GITHUB_TOKEN}
-#  webhookSecret: test
 
+  # GitHub organization name
+  organizationName: "bourgeoisie-whacker"
+
+  # Personal access token with permissions to:
+  #  • Create self-hosted runner tokens
+  #  • List organization runners
+  token: ${GITHUB_TOKEN}
+
+  # Optional webhook secret to verify incoming requests.
+  # Only required in standalone mode when using GitHub webhooks.
+  webhookSecret: test
+
+# HTTP server configuration
 server:
+  # Port for both metrics endpoint and webhook server
   port: 8080
 
+# Compute instance settings for action pools
 compute:
+  # Fallback settings applied if not overridden in any action pool
   defaultSettings:
+    # Minutes of idle time before scaling down an instance
+    # (account for instance boot and runner startup time)
     idleScaleDownInMinutes: 3
+
+    # AWS region for instance provisioning
     region: us-east-1
+
+    # AWS subnet ID for instance networking
     subnet: subnet-257dbf7d
+
+    # AWS security group ID for instance firewall rules
     securityGroup: sg-0189c3298c7be64ca
-    #    credentialsProfile: #<------- if blank it'll just use the default Credentials provider
+
+    # AWS Credentials Profile to used. This will look for the aws credential file at the default location or if you specify the AWS_SHARED_CREDENTIALS_FILE.
+    # If you don't specify this value then it will use the DefaultCredential provider to obtain credentials.
+    # Please see default credentials provider chain
+    # https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html
+    credentialsProfile:
+    # Disk configuration
     diskSettings:
-      type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
-      size: "20" # in gigs
+      # Supported values: gp3, gp2, io2, io1, st1
+      type: "gp3"
+      # Disk size in GiB
+      size: 20
+
+    # EC2 instance type for GitHub runners
     instanceType: t3.medium
-    maxInstanceCount: 10 # <--no max
+
+    # Maximum number of instances (0 or unset = no limit)
+    maxInstanceCount: 10
+
+    # Name of the EC2 key pair to inject for SSH access
     keyPairName: Testers
+
+  # Default action pool placeholder (inherits from defaultSettings)
   defaultActionPool:
     name: default-pool
+
+  # Specific action pools (override defaultSettings as needed)
   actionPools:
     - name: t3a.xlarge
       instanceType: t3a.xlarge
@@ -40,18 +101,22 @@ compute:
       subnet: subnet-1234
       securityGroup: securityGroup-1234
       diskSettings:
-        type: "gp2"
+        type: gp2
         size: 4
-    - instanceType: c4.2xlarge
+
+    - name: c4.2xlarge
+      instanceType: c4.2xlarge
       maxInstanceCount: 4
-      name: c4.2xlarge
-    - instanceType: m8gd.medium
-      name: m8gd.medium
+
+    - name: m8gd.medium
+      instanceType: m8gd.medium
       maxInstanceCount: 3
+      # Use NVMe storage on this instance type
       isNvme: true
-    - instanceType: t3.medium
-      name: t3.medium
+
+    - name: t3.medium
+      instanceType: t3.medium
       maxInstanceCount: 3
+
+    # Example of a pool defined by name only (inherits all defaults)
     - name: haha
-
-

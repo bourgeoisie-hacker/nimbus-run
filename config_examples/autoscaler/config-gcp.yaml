@@ -1,35 +1,103 @@
 
+# Application name for metrics reporting
 name: gcp-1-autoscaler
-computeType: gcp
-logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
-standalone: false # "default false". turns off kafka queue listener
-kafka:
-  retryTopic: retry
-  webhookTopic: webhook
-  broker: localhost:9092
-  consumerGroupId: aws-autoscaler
 
+# Compute backend to use (e.g., aws, gcp, azure)
+computeType: gcp
+
+# Application log level (info | warn | debug | fatal).
+# These defaults can be overridden via Spring Boot properties.
+logLevel: "info"
+
+# When true, runs in standalone mode:
+#  • Disables the Kafka queue listener
+#  • Enables the HTTP webhook endpoint at /webhook
+# Note: Standalone mode assumes no other Nimbus Run components are active.
+standalone: false
+
+# Kafka integration settings
+kafka:
+  # Topic where failed or delayed jobs will be retried
+  retryTopic: retry
+
+  # Topic to consume incoming GitHub Actions webhook events
+  webhookTopic: webhook
+
+  # Kafka broker address
+  broker: localhost:9092
+
+  # Unique consumer group ID for the autoscaler
+  # Changing this may cause in-flight jobs to be reprocessed.
+  consumerGroupId: gcp-autoscaler
+
+# GitHub integration settings
 github:
+  # Environment or runner group label in GitHub
   groupName: "prod"
+
+  # GitHub organization name
   organizationName: "bourgeoisie-whacker"
+
+  # Personal access token with permissions to:
+  #  • Create self-hosted runner tokens
+  #  • List organization runners
   token: ${GITHUB_TOKEN}
+
+  # Optional webhook secret to verify incoming requests.
+  # Only required in standalone mode when using GitHub webhooks.
   webhookSecret: test
 
+# HTTP server configuration
+server:
+  # Port for both metrics endpoint and webhook server
+  port: 8080
+
+# Compute instance settings for Google Cloud action pools
 compute:
+  # Fallback settings applied if not overridden in any action pool
   defaultSettings:
+    # Minutes of idle time before scaling down an instance
+    # (account for instance boot and runner startup time)
     idleScaleDownInMinutes: 10
+
+    # GCP project identifier for resource provisioning
     projectId: massive-dynamo-342018
+
+    # GCP region to create instances in
     region: us-east1
+
+    # Full path to the GCP subnetwork for instance networking
     subnet: regions/us-east1/subnetworks/default
+
+    # Full path to the GCP VPC network for instance networking
     vpc: global/networks/default
-    zones: ["us-east1-b","us-east1-c", "us-east1-d"]
-  #    serviceAccountPath: #<------- if blank it'll just use the default Credentials provider
+
+    # Available zones for instance placement (automatically balances across these)
+    zones:
+      - us-east1-b
+      - us-east1-c
+      - us-east1-d
+
+    # Path to service account JSON for authenticating to GCP APIs
+    # If unset, uses the default credentials provider chain
+    serviceAccountPath: /path/to/service-account-file.json
+
+    # Disk configuration
     diskSettings:
-      size: "20" # in gigs
+      # Disk size in GiB
+      size: 20
+
+    # GCE machine type for GitHub runners
     instanceType: e2-highcpu-4
-    maxInstanceCount: 10 # <--no max
+
+    # Maximum number of instances (0 or unset = no limit)
+    maxInstanceCount: 10
+
+  # Default action pool (inherits all fields from defaultSettings)
   defaultActionPool:
     name: default-pool
+
+  # Specific action pools (override defaultSettings as needed)
   actionPools:
     - name: n2d-standard-2
       instanceType: n2d-standard-2
@@ -37,13 +105,17 @@ compute:
       subnet: subnet-1234
       diskSettings:
         size: 12
-    - instanceType: n1-standard-4
+
+    - name: n1-standard-4
+      instanceType: n1-standard-4
       maxInstanceCount: 4
-      name: n1-standard-4
-    - instanceType: c4-standard-4-lssd
-      name: c4-standard-4-lssd
+
+    - name: c4-standard-4-lssd
+      instanceType: c4-standard-4-lssd
       maxInstanceCount: 3
+      # Use local NVMe storage on this instance type
       isNvme: true
-    - instanceType: e2-highcpu-4
-      name: e2-highcpu-4
+
+    - name: e2-highcpu-4
+      instanceType: e2-highcpu-4
       maxInstanceCount: 3

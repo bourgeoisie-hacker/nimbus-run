@@ -74,10 +74,10 @@ public class KafkaService {
             // Send the message asynchronously
             Future<RecordMetadata> future = producer.send(record, (metadata, exception) -> {
                 if (exception != null) {
-                    log.error("Error while producing: " + exception.getMessage());
+                    log.info("Error while producing: " + exception.getMessage());
                     //TODO create counter here to track errors
                 } else {
-                   log.debug("Message sent to topic=%s, partition=%d, offset=%d%n".formatted(
+                   log.info("Message sent to topic=%s, partition=%d, offset=%d%n".formatted(
                             metadata.topic(), metadata.partition(), metadata.offset()));
                 }
             });

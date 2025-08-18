@@ -2,6 +2,7 @@ package com.nimbusrun.actiontracker;
 
 import com.nimbusrun.actiontracker.config.ActionTrackerConfig;
 import com.nimbusrun.actiontracker.config.ActionTrackerConfigReader;
+import com.nimbusrun.logging.LogLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -24,22 +25,17 @@ public class ActionTrackerApplication {
         setLogLevel(config);
     }
     public static void setLogLevel(ActionTrackerConfig config){
-        String dependenciesLogLevel = "warn";
         String applicationLogLevels = "info";
-        if(config.getLogLevel() != null && config.getLogLevel() != ActionTrackerConfig.LogLevel.N_A){
-            if(config.getLogLevel() == ActionTrackerConfig.LogLevel.UNKNOWN){
-                String logLevels = String.join("| ", Arrays.stream(ActionTrackerConfig.LogLevel.values()).map(ActionTrackerConfig.LogLevel::getLevel).toList());
+        if(config.getLogLevel() != null && config.getLogLevel() != LogLevel.N_A){
+            if(config.getLogLevel() == LogLevel.UNKNOWN){
+                String logLevels = String.join("| ", Arrays.stream(LogLevel.values()).map(LogLevel::getLevel).toList());
                 log.warn("log level improperly set. Please use values {}", logLevels);
             }
-            else if(ActionTrackerConfig.LogLevel.VERBOSE == config.getLogLevel()){
-                dependenciesLogLevel = "debug";
-                applicationLogLevels = "debug";
-            }else {
+            else {
                 applicationLogLevels = config.getLogLevel().getLevel();
             }
 
         }
-        System.setProperty("logging.level.root", dependenciesLogLevel);
         System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
 
     }

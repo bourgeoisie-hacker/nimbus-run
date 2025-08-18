@@ -1,5 +1,6 @@
 package com.nimbusrun.webhook;
 
+import com.nimbusrun.logging.LogLevel;
 import com.nimbusrun.webhook.config.WebHookConfig;
 import com.nimbusrun.webhook.config.WebHookConfigReader;
 import lombok.extern.slf4j.Slf4j;
@@ -27,23 +28,18 @@ public class WebhookApplication {
         setLogLevel(config);
     }
     public static void setLogLevel(WebHookConfig config){
-        String dependenciesLogLevel = "warn";
         String applicationLogLevels = "info";
-        if(config.getLogLevel() != null && config.getLogLevel() != WebHookConfig.LogLevel.N_A){
-            if(config.getLogLevel() == WebHookConfig.LogLevel.UNKNOWN){
-                String logLevels = String.join("| ", Arrays.stream(WebHookConfig.LogLevel.values()).map(WebHookConfig.LogLevel::getLevel).toList());
+        if(config.getLogLevel() != null && config.getLogLevel() != LogLevel.N_A){
+            if(config.getLogLevel() == LogLevel.UNKNOWN){
+                String logLevels = String.join("| ", Arrays.stream(LogLevel.values()).map(LogLevel::getLevel).toList());
                 log.warn("log level improperly set. Please use values {}", logLevels);
             }
-            else if(WebHookConfig.LogLevel.VERBOSE == config.getLogLevel()){
-                dependenciesLogLevel = "debug";
-                applicationLogLevels = "debug";
-            }else {
+            else {
                 applicationLogLevels = config.getLogLevel().getLevel();
             }
 
         }
-//        System.setProperty("logging.level.root", dependenciesLogLevel);
-//        System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
+        System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
 
     }
 }

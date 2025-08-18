@@ -3,7 +3,7 @@ package com.nimbusrun.autoscaler;
 import com.nimbusrun.Constants;
 import com.nimbusrun.autoscaler.config.BaseConfig;
 import com.nimbusrun.autoscaler.config.ConfigReader;
-import com.nimbusrun.compute.Compute;
+import com.nimbusrun.logging.LogLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,10 +21,6 @@ public class AutoScalerApplication {
 
         setSystemProperties();
         var ctx = SpringApplication.run(AutoScalerApplication.class, args);
-        ctx.getBean(Compute.class).listAllComputeInstances();
-//        ctx.getBean(Autoscaler.class).receivedRequests.offer(new ActionPool("t3.medium", 1, 1));
-//        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1, 1));
-//        ctx.getBean(Compute.class).createCompute(new ActionPool("n1-standard-4", 1, 1));
     }
 
     public static void setSystemProperties() throws IOException {
@@ -47,24 +43,18 @@ public class AutoScalerApplication {
     }
 
     public static void setLogLevel(BaseConfig config){
-        String dependenciesLogLevel = "warn";
         String applicationLogLevels = "info";
-        if(config.getLogLevel() != null && config.getLogLevel() != BaseConfig.LogLevel.N_A){
-            if(config.getLogLevel() == BaseConfig.LogLevel.UNKNOWN){
-                String logLevels = String.join("| ", Arrays.stream(BaseConfig.LogLevel.values()).map(BaseConfig.LogLevel::getLevel).toList());
+        if(config.getLogLevel() != null && config.getLogLevel() != LogLevel.N_A){
+            if(config.getLogLevel() == LogLevel.UNKNOWN){
+                String logLevels = String.join("| ", Arrays.stream(LogLevel.values()).map(LogLevel::getLevel).toList());
                 log.warn("log level improperly set. Please use values {}", logLevels);
             }
-            else if(BaseConfig.LogLevel.VERBOSE == config.getLogLevel()){
-                 dependenciesLogLevel = "debug";
-                 applicationLogLevels = "debug";
-            }else {
+            else {
                 applicationLogLevels = config.getLogLevel().getLevel();
             }
 
         }
-        System.setProperty("logging.level.root", dependenciesLogLevel);
         System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
     }
 
 }
-//LOGGING_LEVEL_COM_NIMBUSRUN
