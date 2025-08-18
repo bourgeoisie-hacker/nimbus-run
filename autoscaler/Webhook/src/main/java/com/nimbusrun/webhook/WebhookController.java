@@ -25,8 +25,8 @@ public class WebhookController {
   @PostMapping()
   public ResponseEntity<Object> webhook(@RequestBody String payload, @RequestHeader(value = WebhookVerifier.SECRET_HEADER, required = false) String signature) {
     try {
-      JSONObject json = new JSONObject(payload);
       log.debug("Recieved: \n" + payload.replace("\n","\n\t"));
+      JSONObject json = new JSONObject(payload);
 
       if(webhookSecret != null && !WebhookVerifier.verifySignature(payload.getBytes(), webhookSecret, signature)){
         log.debug("Failed to verified webhook "+ payload);

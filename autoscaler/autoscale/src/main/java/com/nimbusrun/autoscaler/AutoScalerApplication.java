@@ -67,3 +67,4 @@ public class AutoScalerApplication {
     }
 
 }
+//LOGGING_LEVEL_COM_NIMBUSRUN

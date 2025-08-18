@@ -42,8 +42,8 @@ public class WebhookApplication {
             }
 
         }
-        System.setProperty("logging.level.root", dependenciesLogLevel);
-        System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
+//        System.setProperty("logging.level.root", dependenciesLogLevel);
+//        System.setProperty("logging.level.com.nimbusrun", applicationLogLevels);
 
     }
 }

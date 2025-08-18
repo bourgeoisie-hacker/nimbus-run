@@ -77,8 +77,8 @@ public class KafkaService {
                     log.error("Error while producing: " + exception.getMessage());
                     //TODO create counter here to track errors
                 } else {
-                   log.debug("Message sent to topic=%s, partition=%d, offset=%d%n",
-                            metadata.topic(), metadata.partition(), metadata.offset());
+                   log.debug("Message sent to topic=%s, partition=%d, offset=%d%n".formatted(
+                            metadata.topic(), metadata.partition(), metadata.offset()));
                 }
             });
 
