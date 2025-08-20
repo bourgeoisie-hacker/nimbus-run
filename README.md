@@ -2,32 +2,34 @@
 <p align="center">
   <img src="images/nimbusrun.png" width="400" alt="NimbusRun Logo"/>
 </p>
-<!-- TOC -->
-* [NimbusRun](#nimbusrun)
-  * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
-  * [Components](#components-)
-    * [Autoscaler](#autoscaler)
-    * [ActionTracker](#actiontracker)
-    * [Webhook](#webhook)
-  * [Required Environment Variable](#required-environment-variable)
-  * [⚙️ Configuration Properties](#-configuration-properties)
-    * [AutoScaler](#autoscaler-1)
-      * [Kafka Settings](#kafka-settings)
-      * [GitHub Settings](#github-settings)
-    * [🖥️ AWS Compute Settings](#-aws-compute-settings)
-      * [Default Settings](#default-settings)
-      * [Default Action Pool](#default-action-pool)
-      * [AWS Action Pools (`compute.actionPools`)](#aws-action-pools-computeactionpools)
-    * [☁️ GCP Compute Settings](#-gcp-compute-settings)
-      * [Default Settings](#default-settings-1)
-      * [GCP Action Pools](#gcp-action-pools)
-    * [🎯 Action Tracker](#-action-tracker)
-    * [🔔 Webhook Service](#-webhook-service)
-      * [Kafka](#kafka)
-      * [GitHub](#github)
-      * [Server](#server)
-    * [🧩 Examples](#-examples)
-<!-- TOC -->
+<!-- TOC start  -->
+
+- [NimbusRun](#nimbusrun)
+    * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
+    * [Components ](#components)
+        + [Autoscaler](#autoscaler)
+        + [ActionTracker](#actiontracker)
+        + [Webhook](#webhook)
+    * [Required Environment Variable](#required-environment-variable)
+    * [⚙️ Configuration Properties](#-configuration-properties)
+        + [AutoScaler](#autoscaler-1)
+            - [Kafka Settings](#kafka-settings)
+            - [GitHub Settings](#github-settings)
+        + [🖥️ AWS Compute Settings](#-aws-compute-settings)
+            - [Default Settings](#default-settings)
+            - [Default Action Pool](#default-action-pool)
+            - [AWS Action Pools (`compute.actionPools`)](#aws-action-pools-computeactionpools)
+        + [☁️ GCP Compute Settings](#-gcp-compute-settings)
+            - [Default Settings](#default-settings-1)
+            - [GCP Action Pools](#gcp-action-pools)
+        + [🎯 Action Tracker](#-action-tracker)
+        + [🔔 Webhook Service](#-webhook-service)
+            - [Kafka](#kafka)
+            - [GitHub](#github)
+            - [Server](#server)
+        + [🧩 Examples](#-examples)
+
+<!-- TOC end -->
 
 ## 🚀 What is NimbusRun?
 NimbusRun is an **autoscaler for GitHub self-hosted runners** running on **VMs** (or technically *any compute backend if you’re brave enough to contribute 😏*).
