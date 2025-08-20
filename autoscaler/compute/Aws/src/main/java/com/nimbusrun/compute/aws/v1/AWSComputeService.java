@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @Component
 public class AWSComputeService extends Compute {
     private static final Logger log = LoggerFactory.getLogger(AWSComputeService.class);
+    public static final String DEFAULT_DISK_TYPE = "gp3";
+    private static final Integer DEFAULT_DISK_SIZE = 20;
     private final GithubApi githubService;
     private AwsConfig clientConfig;
     private Map<String, AwsConfig.ActionPool> awsActionPool = new HashMap<>();
@@ -281,8 +283,8 @@ public class AWSComputeService extends Compute {
             }
             // Create block device mapping for root volume with specified size and type
             if (!Boolean.TRUE.equals(actionPool.getNvme())) {
-                int diskSize = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getSize).orElse(20);
-                String diskType = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getType).orElse("gp3");
+                int diskSize = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getSize).orElse(DEFAULT_DISK_SIZE);
+                String diskType = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getType).orElse(DEFAULT_DISK_TYPE);
                 BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
                         .deviceName("/dev/sda1") // Root device name for Ubuntu
                         .ebs(EbsBlockDevice.builder()

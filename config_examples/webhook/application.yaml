@@ -1,18 +1,18 @@
+# Application name for metrics reporting
 name: webhook
-kafka:
-  webhookTopic: webhook
-  broker: localhost:9092
-github:
-  webhookSecret: test
-#server:
-#  port: 8082
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: mappings
-logging:
-  level:
-    com:
-      nimbus: debug
+# Kafka integration settings
+kafka:
+  # Writes incoming github webhook messages to this topic
+  webhookTopic: webhook
+  # Kafka broker address
+  broker: localhost:9092
+# GitHub integration settings
+github:
+  # Optional webhook secret to verify incoming requests.
+  webhookSecret: test
+
+# HTTP server configuration
+server:
+  # Port for both metrics endpoint and webhook server
+  port: 8082

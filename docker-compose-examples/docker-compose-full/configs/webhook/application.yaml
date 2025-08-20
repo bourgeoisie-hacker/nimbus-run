@@ -1,0 +1,6 @@
+name: webhook
+kafka:
+  webhookTopic: webhook
+  broker: kafka:9093
+github:
+  webhookSecret: test

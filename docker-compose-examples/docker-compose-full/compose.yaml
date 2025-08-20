@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  kafka:
+    image: apache/kafka:4.0.0
+    container_name: kafka
+    ports:
+      - "9092:9092"     # host -> Kafka (HOST listener)
+    environment:
+      # --- Listeners (host & in-cluster) ---
+      KAFKA_LISTENERS: CONTROLLER://:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+
+      # --- KRaft single-node settings ---
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9091
+
+      # --- Broker essentials for single node ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+      # Log dir (inside the container)
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    #    volumes:
+    #      - ./data/kafka:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD", "/opt/kafka/bin/kafka-cluster.sh", "cluster-id", "--bootstrap-server", "localhost:9092" ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  init-topics:
+    image: apache/kafka:4.0.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -lc '
+        set -euo pipefail
+        for i in $(seq 1 60); do
+          if /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9093 >/dev/null 2>&1; then
+            break
+          fi
+          echo "Waiting for Kafka... ($i/60)"
+          sleep 2
+          if [ "$i" -eq 60 ]; then
+            echo "Kafka did not become ready in time" >&2
+            exit 1
+          fi
+        done
+
+        # Create topics (idempotent)
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9093 \
+          --create --if-not-exists --topic webhook --replication-factor 1 --partitions 3
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9093 \
+          --create --if-not-exists --topic retry   --replication-factor 1 --partitions 3
+
+        echo "Topics now present:"
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9093 --list
+      '
+  webhook:
+    image: bourgeoisiehacker/webhook:0.1.0
+    environment:
+
+      NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./config_examples/webhook/application.yaml:/opt/config.yaml"
+    depends_on:
+      init-topics:
+        condition: service_completed_successfully
+  autoscaler:
+    image: bourgeoisiehacker/autoscaler:latest
+    environment:
+#      AWS_ACCESS_KEY_ID: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+#      AWS_SECRET_ACCESS_KEY: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+      NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
+      SERVER_PORT: "8081"
+    ports:
+      - "8081:8081"
+    volumes:
+      - "./config_examples/autoscaler/config-aws.yaml:/opt/config.yaml"
+    depends_on:
+      init-topics:
+        condition: service_completed_successfully
+
+  action-tracker:
+    image: bourgeoisiehacker/action-tracker:0.1.0
+    ports:
+      - "8082:8082"
+    environment:
+      NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
+      SERVER_PORT: "8082"
+    volumes:
+      - "./config_examples/actionTracker/application.yaml:/opt/config.yaml"
+    depends_on:
+      init-topics:
+        condition: service_completed_successfully
+networks:
+  default:
+    name: nimbus_run

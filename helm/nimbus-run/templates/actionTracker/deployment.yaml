@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{include "actionTracker.fullname" .}}
+  labels:
+    {{- include "actionTracker.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "actionTracker.labels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- include "actionTracker.labels" . | nindent 8 }}
+      labels:
+        {{- include "actionTracker.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "actionTracker.fullname" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{.Values.actionTracker.deployment.image }}
+          imagePullPolicy: {{ include "autoscale-pullpolicy" .}}
+          ports:
+            - name: {{ .Values.actionTracker.deployment.ports.http.portName }}
+              containerPort: {{ .Values.actionTracker.deployment.ports.http.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{.Values.actionTracker.deployment.ports.http.port | squote}}
+            {{- with .Values.actionTracker.deployment.environmentVariables}}
+              {{- toYaml . | nindent 10}}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /metrics # The path to access on the HTTP/HTTPS server.
+              port: {{.Values.actionTracker.deployment.ports.http.port}}    # The port number to access on the container.
+              scheme: HTTP
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /metrics # The path to access on the HTTP/HTTPS server.
+              port: {{.Values.actionTracker.deployment.ports.http.port}}    # The port number to access on the container.
+              scheme: HTTP
+            initialDelaySeconds: 15
+          resources:
+            {{- toYaml .Values.actionTracker.deployment.resources | nindent 12 }}
+          volumeMounts:
+          {{- with .Values.actionTracker.deployment.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+
+      {{- with .Values.actionTracker.deployment.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.actionTracker.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.actionTracker.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.actionTracker.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

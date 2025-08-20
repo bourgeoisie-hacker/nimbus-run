@@ -1,4 +1,3 @@
-
 # Application name for metrics reporting
 name: gcp-1-autoscaler
 
@@ -90,7 +89,7 @@ compute:
     # GCE machine type for GitHub runners
     instanceType: e2-highcpu-4
 
-    # Maximum number of instances (0 or unset = no limit)
+    # Maximum number of instances (0 = no limit)
     maxInstanceCount: 10
 
   # Default action pool (inherits all fields from defaultSettings)

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{include "autoscaler.fullname" .}}
+  labels:
+    {{- include "autoscaler.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "autoscaler.labels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- include "autoscaler.labels" . | nindent 8 }}
+      labels:
+        {{- include "autoscaler.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "autoscaler.fullname" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{.Values.autoscaler.deployment.image }}
+          imagePullPolicy: {{ include "autoscale-pullpolicy" .}}
+          ports:
+            - name: {{ .Values.autoscaler.deployment.ports.http.portName }}
+              containerPort: {{ .Values.autoscaler.deployment.ports.http.port }}
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: {{.Values.autoscaler.deployment.ports.http.port | squote}}
+            {{- with .Values.autoscaler.deployment.environmentVariables}}
+              {{- toYaml . | nindent 10}}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /metrics # The path to access on the HTTP/HTTPS server.
+              port: {{.Values.autoscaler.deployment.ports.http.port}}    # The port number to access on the container.
+              scheme: HTTP
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /metrics # The path to access on the HTTP/HTTPS server.
+              port: {{.Values.autoscaler.deployment.ports.http.port}}    # The port number to access on the container.
+              scheme: HTTP
+            initialDelaySeconds: 15
+          resources:
+            {{- toYaml .Values.autoscaler.deployment.resources | nindent 12 }}
+          volumeMounts:
+          {{- with .Values.autoscaler.deployment.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+
+      {{- with .Values.autoscaler.deployment.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.autoscaler.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.autoscaler.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.autoscaler.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

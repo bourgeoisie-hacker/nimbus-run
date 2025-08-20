@@ -83,7 +83,7 @@ compute:
     # EC2 instance type for GitHub runners
     instanceType: t3.medium
 
-    # Maximum number of instances (0 or unset = no limit)
+    # Maximum number of instances (0 = no limit)
     maxInstanceCount: 10
 
     # Name of the EC2 key pair to inject for SSH access

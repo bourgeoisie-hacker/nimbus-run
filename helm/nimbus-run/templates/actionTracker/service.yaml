@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "actionTracker.fullname" . }}
+  labels:
+    {{- include "actionTracker.labels" . | nindent 4 }}
+
+  {{- with .Values.actionTracker.annotations}}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+
+spec:
+  type: {{ include "actionTracker-service-loadbalancer-type" . }}
+  ports:
+    - port: {{ include "actionTracker-service-loadbalancer-port" .}}
+      targetPort: {{ .Values.actionTracker.deployment.ports.http.portName }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "actionTracker.labels" . | nindent 4 }}

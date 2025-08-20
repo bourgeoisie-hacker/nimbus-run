@@ -222,11 +222,11 @@ public class Autoscaler {
                     ActionPool pool = upscaleRequest.actionPool;
                     AtomicInteger numberOfInstances = actionPoolUpScale.get(pool.getName(), (k)-> new AtomicInteger(0));
                     int maxInstanceCount = pool.getMaxInstances().orElse(Constants.DEFAULT_MAX_INSTANCES);
-
+                    boolean hasUnlimitedInstances = maxInstanceCount == 0;
                     ListInstanceResponse listInstanceResponse = compute.listComputeInstances(pool);
 
-                    if (maxInstanceCount <= listInstanceResponse.instances().size()
-                            || maxInstanceCount <= numberOfInstances.get()) {
+                    if (!hasUnlimitedInstances && (maxInstanceCount <= listInstanceResponse.instances().size()
+                            || maxInstanceCount <= numberOfInstances.get())) {
                         this.retryLater(5000, upscaleRequest.retryPoolFull()); // So it doesn't occupy the CPU full time
                         continue;
                     }

@@ -1,0 +1,238 @@
+
+standalone: false
+
+github:
+  groupName: "prod"
+  organizationName: ""
+  token: "${GITHUB_TOKEN}"
+
+## You should create a kafka cluster outside of this helm chart. This makes use `auto.create.topics.enable`.
+# It doesn't take advantage of clearn.policy, retention.ms or compression.type. Take a look at strimzi-kafka-operator if
+# if you want to manage a kakfa cluster in production. https://github.com/strimzi/strimzi-kafka-operator
+kafka:
+  create: false
+#  brokerOverride: # set this if using a
+  webhookTopic:
+    name: webhook
+  retryTopic:
+    name: retry
+
+
+
+compute:
+  computeType: "aws" # aws | gcp | none(fails)
+  aws:
+    name: aws-autoscaler
+    # Fallback settings applied if not overridden in any action pool
+    defaultSettings:
+      # Minutes of idle time before scaling down an instance
+      # (account for instance boot and runner startup time)
+      idleScaleDownInMinutes: 10
+      # AWS region for instance provisioning
+      region: us-east-2
+      # AWS subnet ID for instance networking
+      subnet: subnet-1234
+
+      # AWS security group ID for instance firewall rules
+      securityGroup: sg-1234
+
+      # AWS Credentials Profile to used. This will look for the aws credential file at the default location or if you specify the AWS_SHARED_CREDENTIALS_FILE.
+      # If you don't specify this value then it will use the DefaultCredential provider to obtain credentials.
+      # Please see default credentials provider chain
+      # https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html
+      credentialsProfile:
+      # Disk configuration
+      diskSettings:
+        # Supported values: gp3, gp2, io2, io1, st1
+        type: "gp3"
+        # Disk size in GiB
+        size: 20
+
+      # EC2 instance type for GitHub runners
+      instanceType: t3.medium
+
+      # Maximum number of instances (0 = no limit)
+      maxInstanceCount: 10
+
+      # Name of the EC2 key pair to inject for SSH access
+      keyPairName: my-key-pair
+
+    # Default action pool placeholder (inherits from defaultSettings)
+    defaultActionPool:
+      name: default-pool
+
+    # Specific action pools (override defaultSettings as needed)
+    actionPools:
+      - name: burstable
+        instanceType: t3a.xlarge
+        maxInstanceCount: 9
+        subnet: subnet-1234
+        securityGroup: securityGroup-1234
+        diskSettings:
+          type: gp2
+          size: 4
+      - name: heavy-compute
+        instanceType: c4.2xlarge
+        maxInstanceCount: 5
+  gcp:
+    # Fallback settings applied if not overridden in any action pool
+    defaultSettings:
+      # Minutes of idle time before scaling down an instance
+      # (account for instance boot and runner startup time)
+      idleScaleDownInMinutes: 10
+
+      # GCP project identifier for resource provisioning
+      projectId:
+
+      # GCP region to create instances in
+      region: us-east1
+
+      # Full path to the GCP subnetwork for instance networking
+      subnet: regions/us-east1/subnetworks/default
+
+      # Full path to the GCP VPC network for instance networking
+      vpc: global/networks/default
+
+      # Available zones for instance placement (automatically balances across these)
+      zones:
+        - us-east1-b
+        - us-east1-c
+        - us-east1-d
+
+      # Path to service account JSON for authenticating to GCP APIs
+      # If unset, uses the default credentials provider chain
+      serviceAccountPath: /path/to/service-account-file.json
+
+      # Disk configuration
+      diskSettings:
+        # Disk size in GiB
+        size: 20
+
+      # GCE machine type for GitHub runners
+      instanceType: e2-highcpu-4
+
+      # Maximum number of instances (0 = no limit)
+      maxInstanceCount: 10
+
+    # Default action pool (inherits all fields from defaultSettings)
+    defaultActionPool:
+      name: default-pool
+
+    # Specific action pools (override defaultSettings as needed)
+    actionPools:
+      - name: test
+        instanceType: n2d-standard-2
+        maxInstanceCount: 5
+        diskSettings:
+          size: 15
+
+autoscaler:
+  deployment:
+    image: bourgeoisiehacker/autoscaler:0.1.0
+    labels: { }
+    nodeSelector: { }
+    affinity: { }
+    tolerations: {}
+    ports:
+      http:
+        port: 8080
+        portName: http
+    volumes: []
+    volumeMounts: []
+    environmentVariables: []
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+  serviceAccount:
+    create: true
+    annotations: { }
+    labels: { }
+  service:
+    annotations: {}
+    port: 8080
+    type: LoadBalancer
+  settings:
+    name: "autoscaler"
+    logLevel: info
+actionTracker:
+  deployment:
+    image: bourgeoisiehacker/actionTracker:0.1.0
+    labels: { }
+    nodeSelector: { }
+    affinity: { }
+    tolerations: { }
+    ports:
+      http:
+        port: 8080
+        portName: http
+    volumes: [ ]
+    volumeMounts: [ ]
+    environmentVariables: [ ]
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+  serviceAccount:
+    create: true
+    annotations: { }
+    labels: { }
+  service:
+    annotations: { }
+    port: 8080
+    type: LoadBalancer
+  # no need to set github/kafka settings
+  settings:
+    name: "ActionTracker"
+    retryPolicy:
+      # Maximum minutes a job may stay in “Queued” state before being retried
+      # Once exceeded, the job is sent to the retry topic
+      maxJobInQueuedInMinutes: 6
+
+      # Minimum minutes to wait between retry attempts for the same job
+      maxTimeBtwRetriesInMinutes: 6
+
+      # Maximum number of retry attempts per job
+      maxRetries: 3
+
+webhook:
+  deployment:
+    image: bourgeoisiehacker/autoscaler:0.1.0
+    labels: { }
+    nodeSelector: { }
+    affinity: { }
+    tolerations: { }
+    ports:
+      http:
+        port: 8080
+        portName: http
+    volumes: [ ]
+    volumeMounts: [ ]
+    environmentVariables: [ ]
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+  serviceAccount:
+    create: true
+    annotations: { }
+    labels: { }
+  service:
+    annotations: { }
+    port: 8080
+    type: LoadBalancer
+  settings:
+    # Application name for metrics reporting
+    name: "Webhook"
+    github:
+      # Optional webhook secret to verify incoming requests.
+      webhookSecret: test

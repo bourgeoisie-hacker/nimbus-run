@@ -25,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class TrackService {
 
-    private static Integer MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT = 5;
-    private static Integer MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT = 5;
+    private static Integer MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT = 7;
+    private static Integer MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT = 7;
     private static Integer MAX_RETRY_ATTEMPTS_DEFAULT = 3;
     private Map<String, WorkflowJobWatcher> workflowJobWatcherMap = new ConcurrentHashMap<>();
     private BlockingDeque<GithubActionJob> jobQueue = new LinkedBlockingDeque<>();
