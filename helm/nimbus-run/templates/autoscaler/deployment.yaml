@@ -29,9 +29,9 @@ spec:
             - name: SERVER_PORT
               value: {{.Values.autoscaler.deployment.ports.http.port | squote}}
             - name: NIMBUS_RUN_CONFIGURATION_FILE
-              value: /{{ .Values.autoscaler.configMap.nimbusRun.keyName }}
+              value: /opt/{{ .Values.autoscaler.configMap.nimbusRun.keyName }}
             {{- with .Values.autoscaler.deployment.environmentVariables}}
-              {{- toYaml . | nindent 10}}
+              {{- toYaml . | nindent 12}}
             {{- end }}
           livenessProbe:
             httpGet:
@@ -48,7 +48,7 @@ spec:
           resources:
             {{- toYaml .Values.autoscaler.deployment.resources | nindent 12 }}
           volumeMounts:
-            - mountPath: /
+            - mountPath: /opt/
               name: {{ include "autoscaler.fullname" . }}
           {{- with .Values.autoscaler.deployment.volumeMounts }}
             {{- toYaml . | nindent 12 }}

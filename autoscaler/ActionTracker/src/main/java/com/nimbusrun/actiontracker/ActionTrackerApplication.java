@@ -22,7 +22,13 @@ public class ActionTrackerApplication {
         ActionTrackerConfig config = ActionTrackerConfigReader.readConfig();
         System.setProperty("spring.config.location", System.getenv(ActionTrackerConfigReader.NIMBUS_RUN_CONFIGURATION_FILE_ENV));
         System.setProperty("spring.application.name", config.getName());
+        setManagementSettings();
         setLogLevel(config);
+    }
+    public static void setManagementSettings(){
+        System.setProperty("management.endpoints.web.path-mapping.prometheus","metrics");
+        System.setProperty("management.endpoints.web.base-path","/");
+        System.setProperty("management.endpoints.web.exposure.include","prometheus");
     }
     public static void setLogLevel(ActionTrackerConfig config){
         String applicationLogLevels = "info";

@@ -19,7 +19,7 @@ kafka:
   retryTopic:
     name: retry
   deployment:
-    image: apache/kafka:3.9.1
+    image: apache/kafka:4.0.0
     labels: { }
     nodeSelector: { }
     affinity: { }
@@ -44,7 +44,16 @@ kafka:
   service:
     annotations: { }
     type: ClusterIP
-
+  envoy:
+    configmap:
+      configKey: "envoy.yaml"
+    ports:
+      client:
+        port: 8082
+        portName: envoyClient
+      controller:
+        port: 8083
+        portName: envoyClient
 
 
 compute:
@@ -209,7 +218,7 @@ actionTracker:
       maxRetries: 3
   additionalSettings: { }
   deployment:
-    image: bourgeoisiehacker/actionTracker:0.1.0
+    image: bourgeoisiehacker/action-tracker:0.1.0
     labels: { }
     nodeSelector: { }
     affinity: { }

@@ -4,32 +4,8 @@
 </p>
 <!-- TOC start  -->
 
-- [NimbusRun](#nimbusrun)
-    * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
-    * [Components ](#components)
-        + [Autoscaler](#autoscaler)
-        + [ActionTracker](#actiontracker)
-        + [Webhook](#webhook)
-    * [Required Environment Variable](#required-environment-variable)
-    * [⚙️ Configuration Properties](#-configuration-properties)
-        + [AutoScaler](#autoscaler-1)
-            - [Kafka Settings](#kafka-settings)
-            - [GitHub Settings](#github-settings)
-        + [🖥️ AWS Compute Settings](#-aws-compute-settings)
-            - [Default Settings](#default-settings)
-            - [Default Action Pool](#default-action-pool)
-            - [AWS Action Pools (`compute.actionPools`)](#aws-action-pools-computeactionpools)
-        + [☁️ GCP Compute Settings](#-gcp-compute-settings)
-            - [Default Settings](#default-settings-1)
-            - [GCP Action Pools](#gcp-action-pools)
-        + [🎯 Action Tracker](#-action-tracker)
-        + [🔔 Webhook Service](#-webhook-service)
-            - [Kafka](#kafka)
-            - [GitHub](#github)
-            - [Server](#server)
-        + [🧩 Examples](#-examples)
 
-<!-- TOC end -->
+
 
 ## 🚀 What is NimbusRun?
 NimbusRun is an **autoscaler for GitHub self-hosted runners** running on **VMs** (or technically *any compute backend if you’re brave enough to contribute 😏*).
@@ -44,8 +20,142 @@ That’s where NimbusRun shines:
 - ✅ Pay only for what you use while keeping the flexibility of full VMs.
 
 Traditional VM-based runners usually mean a fixed number of servers sitting idle (a.k.a. *burning cash*). NimbusRun fixes that with **on-demand scaling** and cloud-friendly efficiency.
-
 ---
+
+## Getting Started
+
+*Requirements*
+
+- [Github organization](https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/creating-a-new-organization-from-scratch)
+- [Runner group for the organization](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)
+- either an AWS or GCP cloud account( or create a new implementation for [Compute](autoscaler/compute/ComputeApi/src/main/java/com/nimbusrun/compute/Compute.java) and choose your own compute engine :D )
+- [Github Token](https://github.com/settings/tokens)
+- [Knowledge of what github actions is](https://docs.github.com/en/actions)
+
+*Setup A Webhook*
+Follow along with the [official documentation](https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks)
+
+* Configure A Github Action Workflow *
+
+```yaml
+name: test
+on:
+  push:
+    branches:
+      - master #<------ or whatever branch that exists
+jobs:
+  test:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=t3.medium
+    steps:
+      - name: test
+        run: echo "test"
+```
+You need to specify the runner group name for this field `runs-on.group`. 
+
+You have to specify the runner group name under the labels as 
+```yaml
+      ...
+      labels:
+        - action-group=prod
+```
+The action-group label has to match the `runs-on.group` field
+
+You next need to specify which action pool you want this to run on. Ensure that the action-pool name matches an action pool name inside of your configuration file.
+```yaml
+      ...
+      labels:
+        - action-pool=pool-name-1
+```
+**Note**: You can skip adding an action pool name if you have a defaultPool setup. Its good practice to use an actual action-pool
+
+* Specify Autoscaler Configuration File *
+
+Create configuration file called `config.yaml`
+```yaml
+name: aws-1-autoscaler
+computeType: aws
+logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
+standalone: true # "default false". turns off kafka queue listener
+
+github:
+  groupName: "prod"
+  organizationName: "bourgeoisie-whacker"
+  token: "" # This is the github token with permissions to interact with github actions 
+
+server:
+  port: 8081
+
+compute:
+  defaultSettings:
+    idleScaleDownInMinutes: 10 # This number should higher than 5 atleast. It takes a second for runner service to start
+    region: "" # i.e us-east-2
+    subnet: "" # subnet-id i.e subnet-1234
+    securityGroup: "" # security group id i.e sg-1234
+    diskSettings:
+      type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
+      size: "20" # in gigs
+    instanceType: "" # i.e t3.medium
+    maxInstanceCount: 10 #
+  defaultActionPool:
+    name: default-pool
+  actionPools:
+    - name: t3.medium
+      instanceType: t3.medium  
+    - name: big-compute
+      instanceType: c4.2xlarge
+```
+
+We have three action pools specified. Their names are 
+- t3.medium
+- big-compute
+- default-pool
+
+The default-pool is special in that if you don't specify an action pool name in your GitHub workflow it will attempt to assign it to the default action pool.
+
+*Define Docker Compose*
+```yaml
+version: "3.9"
+
+services:
+  autoscaler:
+    image: bourgeoisiehacker/autoscaler:latest
+    environment:
+      AWS_ACCESS_KEY_ID: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+      AWS_SECRET_ACCESS_KEY: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+      NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./config.yaml:/opt/config.yaml" 
+    depends_on:
+      init-topics:
+        condition: service_completed_successfully
+
+networks:
+  default:
+    name: nimbus_run
+```
+Now run docker compose. Make sure the config file you made is in the same directory as your compose file
+
+```bash
+docker compose -f compose.yaml up
+```
+
+
+
+
+If you running this on a vm with a public ip address setup the webhook. Example `10.34.62.102:8080/webhook`. You have to specify `/webhook` at the end. Also make sure the content type you chosen is `application/json`. I have SSL verification turned off for demo purposes but, you should take the time to setup tls infront of either webhook or autoscaler. Choose  `Send me everything` and select `workflow jobs` and `workflow runs` events.
+<p align="center">
+  <img src="images/setup-webhook.gif" width="1000" alt="NimbusRun Logo"/>
+</p>
+
+Now you can trigger a workflow job in your repository by pushing a change you should see an instance get made
+
 ## 🔧 Components
 
 

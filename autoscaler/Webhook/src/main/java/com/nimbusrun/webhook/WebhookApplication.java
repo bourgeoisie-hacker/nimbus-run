@@ -25,7 +25,13 @@ public class WebhookApplication {
         WebHookConfig config = WebHookConfigReader.readConfig();
         System.setProperty("spring.config.location", System.getenv(WebHookConfigReader.NIMBUS_RUN_CONFIGURATION_FILE_ENV));
         System.setProperty("spring.application.name", config.getName());
+        setManagementSettings();
         setLogLevel(config);
+    }
+    public static void setManagementSettings(){
+        System.setProperty("management.endpoints.web.path-mapping.prometheus","metrics");
+        System.setProperty("management.endpoints.web.base-path","/");
+        System.setProperty("management.endpoints.web.exposure.include","prometheus");
     }
     public static void setLogLevel(WebHookConfig config){
         String applicationLogLevels = "info";

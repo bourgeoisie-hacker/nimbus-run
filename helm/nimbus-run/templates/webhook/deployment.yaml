@@ -29,7 +29,7 @@ spec:
             - name: SERVER_PORT
               value: {{.Values.webhook.deployment.ports.http.port | squote}}
             - name: NIMBUS_RUN_CONFIGURATION_FILE
-              value: /{{ .Values.webhook.configMap.nimbusRun.keyName }}
+              value: /opt/{{ .Values.webhook.configMap.nimbusRun.keyName }}
             {{- with .Values.webhook.deployment.environmentVariables}}
               {{- toYaml . | nindent 10}}
             {{- end }}
@@ -48,7 +48,7 @@ spec:
           resources:
             {{- toYaml .Values.webhook.deployment.resources | nindent 12 }}
           volumeMounts:
-            - mountPath: /
+            - mountPath: /opt/
               name: {{ include "webhook.fullname" . }}
           {{- with .Values.webhook.deployment.volumeMounts }}
             {{- toYaml . | nindent 12 }}
