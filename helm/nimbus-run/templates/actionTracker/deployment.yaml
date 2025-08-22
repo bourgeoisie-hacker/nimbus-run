@@ -20,7 +20,7 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: {{.Values.actionTracker.deployment.image }}
-          imagePullPolicy: {{ include "autoscale-pullpolicy" .}}
+          imagePullPolicy: {{ include "actionTracker-pullpolicy" .}}
           ports:
             - name: {{ .Values.actionTracker.deployment.ports.http.portName }}
               containerPort: {{ .Values.actionTracker.deployment.ports.http.port }}
@@ -28,6 +28,8 @@ spec:
           env:
             - name: SERVER_PORT
               value: {{.Values.actionTracker.deployment.ports.http.port | squote}}
+            - name: NIMBUS_RUN_CONFIGURATION_FILE
+              value: /{{ .Values.actionTracker.configMap.nimbusRun.keyName }}
             {{- with .Values.actionTracker.deployment.environmentVariables}}
               {{- toYaml . | nindent 10}}
             {{- end }}
@@ -46,11 +48,15 @@ spec:
           resources:
             {{- toYaml .Values.actionTracker.deployment.resources | nindent 12 }}
           volumeMounts:
+            - mountPath: /
+              name: {{ include "actionTracker.fullname" . }}
           {{- with .Values.actionTracker.deployment.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
-
+        - name: {{ include "actionTracker.fullname" . }}
+          configMap:
+            name: {{ include "actionTracker.fullname" . }}
       {{- with .Values.actionTracker.deployment.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

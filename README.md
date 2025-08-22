@@ -36,7 +36,7 @@ NimbusRun is an **autoscaler for GitHub self-hosted runners** running on **VMs**
 
 You may ask: *“Why another autoscaler?”*
 - Most alternatives focus exclusively on Kubernetes.
-- But what about VMs? What if your builds need Docker-in-Docker or system-level isolation?
+- But what about VMs? What if your builds needs to build a container or needs system-level isolation?
 
 That’s where NimbusRun shines:
 - ✅ Run GitHub Actions jobs directly on VMs (no more “containers inside containers inside containers” inception nightmares).
@@ -46,25 +46,28 @@ That’s where NimbusRun shines:
 Traditional VM-based runners usually mean a fixed number of servers sitting idle (a.k.a. *burning cash*). NimbusRun fixes that with **on-demand scaling** and cloud-friendly efficiency.
 
 ---
-## Components 
+## 🔧 Components
+
+
 ### Autoscaler
-- This is responsible for scaling up instances when a workflow_job webhook event is triggered. 
-- It handles the lifecycle of bringing instances up and down and
-- It handles the removes github actions runners that are offline(orphaned)
-- Reads from 2 kafka queues. Webhook and retry queues. The webhook queue are coming github and the retry queue for jobs that are being retried due to them being in a "queued" status for some period of time.
-- It can be ran in standalone mode without the use of a kafka queue. It'll  have an endpoint /webhook that can accept webhooks from github
+The Autoscaler is the muscle of NimbusRun. It spins up new instances whenever a `workflow_job` webhook event is received and manages the full lifecycle of GitHub Actions runners — from creating instances to tearing them down and cleaning up any orphaned runners left behind. It listens on two Kafka queues: the **webhook queue**, which receives new jobs from GitHub, and the **retry queue**, which holds jobs that have been stuck in a “queued” state for too long. For simpler setups, the Autoscaler can also run in standalone mode without Kafka. In this mode, it exposes a `/webhook` endpoint that accepts webhooks directly from GitHub.
 
 ### ActionTracker
-- This reads from the webhook queue. 
-- If a job has been in a "queued" status for some period of time the actionTracker will write the job to the retry topic so that the autoscaler can retry processing that job again.
-- You should be careful with having to short small of numbers for `maxJobInQueuedInMinutes` or `maxTimeBtwRetriesInMinutes` because this could instances being scaled with not enough jobs to process and thus wasting compute and cash.
+The ActionTracker plays the role of supervisor for jobs in the webhook queue. When it notices a job has been “queued” longer than allowed, it republishes the job to the retry topic so the Autoscaler can attempt to process it again. Care should be taken when setting values for `maxJobInQueuedInMinutes` and `maxTimeBtwRetriesInMinutes`. If these numbers are too low, the Autoscaler may scale up runners more quickly than jobs actually arrive, which leads to wasted compute and — even worse — wasted cash. In other words, you’ll be making your cloud provider very happy.
 
 ### Webhook
-- Similiar to Autoscaler in standalone mode except it accepts traffic and pushes the workflow_job payload to the webhook kafka topic.
-- It does some validation to make sure its the correct payload type
+The Webhook component acts like a lightweight version of the Autoscaler running in standalone mode. Instead of scaling, its main responsibility is to accept incoming traffic and push valid `workflow_job` payloads into the webhook Kafka topic. Before doing so, it performs basic validation to ensure only the correct payload types get through.
 
-## Required Environment Variable
-Each one of the components(Autoscaler, Webhook, ActionTracker) requires the `NIMBUS_RUN_CONFIGURATION_FILE` environment variable to know where to look for its configuration file. 
+### TL;DR
+NimbusRun is made up of three core parts: the **Autoscaler**, the **ActionTracker**, and the **Webhook**.
+
+- The **Autoscaler** is in charge of spinning runners up and down.
+- The **ActionTracker** makes sure jobs don’t get stuck in queue limbo.
+- The **Webhook** is the lightweight front door, passing valid GitHub job events into the system.
+
+Together, they keep your GitHub Actions humming, your runners lean, and your cloud bill a little less terrifying.
+## 🌍 Required Environment Variable
+Each component — Autoscaler, ActionTracker, and Webhook — requires the `NIMBUS_RUN_CONFIGURATION_FILE` environment variable. This variable tells the component where to find its configuration file. Without it, NimbusRun has no idea how to behave and is essentially just a dreamer floating in the cloud.
 
 
 

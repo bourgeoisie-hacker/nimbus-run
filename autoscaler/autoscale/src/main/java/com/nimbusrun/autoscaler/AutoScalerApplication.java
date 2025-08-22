@@ -3,6 +3,8 @@ package com.nimbusrun.autoscaler;
 import com.nimbusrun.Constants;
 import com.nimbusrun.autoscaler.config.BaseConfig;
 import com.nimbusrun.autoscaler.config.ConfigReader;
+import com.nimbusrun.compute.ActionPool;
+import com.nimbusrun.compute.Compute;
 import com.nimbusrun.logging.LogLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
@@ -21,6 +23,7 @@ public class AutoScalerApplication {
 
         setSystemProperties();
         var ctx = SpringApplication.run(AutoScalerApplication.class, args);
+        ctx.getBean(Compute.class).createCompute(new ActionPool("t3.medium", 1,1));
     }
 
     public static void setSystemProperties() throws IOException {

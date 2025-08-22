@@ -128,16 +128,17 @@ public class ConfigReader {
         notNull(baseConfig::getCompute,COMPUTE_KEY,addToErrorConsumer);
         notNull(baseConfig::getComputeType,COMPUTE_TYPE,addToErrorConsumer);
         notNull(baseConfig::getGithub,GITHUB_KEY,addToErrorConsumer);
-        notNull(baseConfig::getKafka,KAFKA_KEY,addToErrorConsumer);
-        if(baseConfig.getKafka() != null){
-            UnaryOperator<String> combineName = (name)-> KAFKA_KEY+"."+name;
-            BaseConfig.KafkaConfig k = baseConfig.getKafka();
-            notNull(k::getBroker, combineName.apply(KAFKA_BROKER_KEY), addToErrorConsumer);
-            notNull(k::getRetryTopic, combineName.apply(KAFKA_RETRY_TOPIC_KEY), addToErrorConsumer);
-            notNull(k::getWebhookTopic, combineName.apply(KAFKA_WEBHOOK_TOPIC_KEY), addToErrorConsumer);
-            notNull(k::getConsumerGroupId, combineName.apply(KAFKA_CONSUMER_GROUP_ID_KEY), addToErrorConsumer);
+        if(!Boolean.parseBoolean(baseConfig.getStandalone())) {
+            notNull(baseConfig::getKafka, KAFKA_KEY, addToErrorConsumer);
+            if (baseConfig.getKafka() != null) {
+                UnaryOperator<String> combineName = (name) -> KAFKA_KEY + "." + name;
+                BaseConfig.KafkaConfig k = baseConfig.getKafka();
+                notNull(k::getBroker, combineName.apply(KAFKA_BROKER_KEY), addToErrorConsumer);
+                notNull(k::getRetryTopic, combineName.apply(KAFKA_RETRY_TOPIC_KEY), addToErrorConsumer);
+                notNull(k::getWebhookTopic, combineName.apply(KAFKA_WEBHOOK_TOPIC_KEY), addToErrorConsumer);
+                notNull(k::getConsumerGroupId, combineName.apply(KAFKA_CONSUMER_GROUP_ID_KEY), addToErrorConsumer);
+            }
         }
-
         if(baseConfig.getGithub() != null){
             UnaryOperator<String> combineName = (name)-> GITHUB_KEY+"."+name;
             BaseConfig.GithubConfig g = baseConfig.getGithub();

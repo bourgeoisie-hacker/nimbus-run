@@ -1,0 +1,26 @@
+{{- if .Values.kafka.create}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kafka.fullname" . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+  {{- with .Values.kafka.annotations}}
+  annotations:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+
+spec:
+  type: {{ include "kafka-service-loadbalancer-type" .}}
+  ports:
+    - port: {{ .Values.kafka.deployment.ports.client.port }}
+      targetPort: {{ .Values.kafka.deployment.ports.client.port }}
+      protocol: TCP
+      name: {{ .Values.kafka.deployment.ports.client.portName }}
+    - port: {{ .Values.kafka.deployment.ports.controller.port }}
+      targetPort: {{ .Values.kafka.deployment.ports.controller.port }}
+      protocol: TCP
+      name: {{ .Values.kafka.deployment.ports.controller.portName }}
+  selector:
+    {{- include "kafka.labels" . | nindent 4 }}
+{{- end }}

@@ -6,19 +6,28 @@ metadata:
    {{- include "autoscaler.labels" . | nindent 4}}
 
 data:
-  "config.yaml": |
+  {{.Values.autoscaler.configMap.nimbusRun.keyName}}: |
     name: {{.Values.autoscaler.settings.name}}
     logLevel: {{.Values.autoscaler.settings.logLevel}}
     standalone: {{.Values.standalone}}
     computeType: {{.Values.compute.computeType}}
     kafka:
-      {{- with .Values.kafka }}
-        {{- toYaml . | nindent 8}}
+      retryTopic: {{ .Values.kafka.retryTopic.name }}
+      webhookTopic: {{ .Values.kafka.webhookTopic.name }}
+      broker: {{ include "kafka-broker-url" . }}
+      consumerGroupId: {{ .Values.autoscaler.settings.kafkaConsumerGroup}}
+      {{- if .Values.kafka.create}}
+      shouldCreateTopics: true
       {{- end }}
 
     github:
-      {{- with .Values.github}}
-        {{- toYaml . | nindent 8}}
-      {{- end }}
+      groupName: {{ .Values.github.groupName }}
+      organizationName: {{ .Values.github.organizationName }}
+      token: {{ .Values.github.token }}
+      webhookSecret: {{ .Values.github.webhookSecret }}
+
     compute:
       {{- include "autoscaler.computeSettings" . | nindent 8}}
+    {{- with .Values.autoscaler.additionalSettings}}
+        {{- toYaml . | nindent 4}}
+    {{- end }}

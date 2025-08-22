@@ -6,14 +6,20 @@ metadata:
    {{- include "actionTracker.labels" . | nindent 4}}
 
 data:
-  "config.yaml": |
+  {{ .Values.actionTracker.configMap.nimbusRun.keyName}}: |
+    name: {{ .Values.actionTracker.settings.name }}
+    retryPolicy:
+      maxJobInQueuedInMinutes: {{ .Values.actionTracker.settings.retryPolicy.maxJobInQueuedInMinutes }}
+      maxTimeBtwRetriesInMinutes: {{ .Values.actionTracker.settings.retryPolicy.maxTimeBtwRetriesInMinutes }}
+      maxRetries: {{ .Values.actionTracker.settings.retryPolicy.maxRetries }}
     kafka:
-      {{- with .Values.kafka }}
-        {{- toYaml . | nindent 8}}
-      {{- end }}
+      retryTopic: {{.Values.kafka.retryTopic.name}}
+      webhookTopic: {{.Values.kafka.webhookTopic.name}}
+      broker: {{ include "kafka-broker-url" . |squote}}
+      consumerGroupId: {{ .Values.actionTracker.settings.kafkaConsumerGroup }}
 
     github:
-      {{- with .Values.github}}
-        {{- toYaml . | nindent 8}}
-      {{- end }}
-
+      groupName: {{ .Values.github.groupName }}
+    {{- with .Values.actionTracker.additionalSettings}}
+        {{- toYaml . | nindent 4}}
+    {{- end }}

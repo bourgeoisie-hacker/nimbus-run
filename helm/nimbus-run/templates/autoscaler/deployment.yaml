@@ -28,6 +28,8 @@ spec:
           env:
             - name: SERVER_PORT
               value: {{.Values.autoscaler.deployment.ports.http.port | squote}}
+            - name: NIMBUS_RUN_CONFIGURATION_FILE
+              value: /{{ .Values.autoscaler.configMap.nimbusRun.keyName }}
             {{- with .Values.autoscaler.deployment.environmentVariables}}
               {{- toYaml . | nindent 10}}
             {{- end }}
@@ -46,11 +48,15 @@ spec:
           resources:
             {{- toYaml .Values.autoscaler.deployment.resources | nindent 12 }}
           volumeMounts:
+            - mountPath: /
+              name: {{ include "autoscaler.fullname" . }}
           {{- with .Values.autoscaler.deployment.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
-
+        - name: {{ include "autoscaler.fullname" . }}
+          configMap:
+            name: {{ include "autoscaler.fullname" . }}
       {{- with .Values.autoscaler.deployment.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

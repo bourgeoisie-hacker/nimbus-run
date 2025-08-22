@@ -8,6 +8,7 @@ import com.nimbusrun.autoscaler.github.orm.runner.ListSelfHostedRunners;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.ListRunnerGroup;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.RunnerGroup;
+import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.Utils;
 import lombok.Getter;
@@ -51,7 +52,8 @@ public class GithubService implements GithubApi {
 
     public GithubService(@Value("${github.token}") String token,
                          @Value("${github.organizationName}") String organization,
-                         @Value("${github.groupName}") String runnerGroupName) {
+                         @Value("${github.groupName}") String runnerGroupName,
+                         @Value("${spring.application.name}") String actionGroupName) {
         this.token = token;
         this.organization = organization;
         this.runnerGroupName = runnerGroupName;
@@ -129,11 +131,25 @@ public class GithubService implements GithubApi {
             var pages = fetchPaginatedData(request, ListSelfHostedRunners.class);
             List<Runner> allRunners = new ArrayList<>();
             pages.forEach(page -> allRunners.addAll(page.getRunners()));
-            return allRunners;
+            return allRunners.stream().filter(this::runnerHaveCorrectActionGroupLabel).toList();
         } catch (Exception e) {
             log.error("Error listing runners for group {}", groupId, e);
             throw new RuntimeException(e);
         }
+    }
+    private boolean runnerHaveCorrectActionGroupLabel(Runner r) {
+        return r.getLabels().stream().anyMatch(label -> {
+            if (label.getName() != null) {
+                String[] parts = label.getName().trim().split("=");
+                if (parts.length == 2
+                        && Constants.ACTION_GROUP_LABEL_KEY.equals(parts[0])
+                        && this.runnerGroupName.equals(parts[1])) {
+                    return true;
+                }
+            }
+            return false;
+
+        });
     }
 
     public boolean deleteRunner(String runnerId) {
