@@ -117,6 +117,7 @@ public class Autoscaler {
      */
     public void handleComputeAndRunners() {
         try {
+            log.debug("Running handle Compute Runners");
             List<Runner> runners = githubService.listRunnersInGroup();
             Map<String, Runner> runnersMap = runners.stream().collect(Collectors.toMap(Runner::getName, Function.identity()));
             updateRunnerInfo(runners);
