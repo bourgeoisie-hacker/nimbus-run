@@ -67,7 +67,7 @@ public class Autoscaler {
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
         this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,10,30, TimeUnit.SECONDS);
         // This operation could take longer
-        this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,10,30, TimeUnit.SECONDS);
+        var sc =this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,10,30, TimeUnit.SECONDS);
         this.processMessageThread.execute(this::processMessage);
         this.processMessageThread.execute(this::processRetryMessage);
 
@@ -88,8 +88,7 @@ public class Autoscaler {
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build();
         Thread.sleep(1000);
-        log.info("main Processes Started %s".formatted(((ThreadPoolExecutor)processMessageThread).getActiveCount()));
-        log.info("Schedulged Processes Started %s".formatted(((ThreadPoolExecutor)mainThread).getTaskCount()));
+
         log.info("Autoscaler started");
     }
 
@@ -203,6 +202,7 @@ public class Autoscaler {
 
     public synchronized void processRetryMessage(){
         while(true){
+            log.debug("running retry");
             try{
                 GithubActionJob gj;
                 while((gj = this.receivedRetryRequests.poll(1,TimeUnit.MINUTES)) != null){
@@ -219,8 +219,11 @@ public class Autoscaler {
         while (true) {
             try {
                 log.debug("running process message");
+                log.info("main Processes Started %s".formatted(((ThreadPoolExecutor)processMessageThread).getActiveCount()));
+                log.info("Schedulged Processes Started %s and is shutdown? %s".formatted(((ThreadPoolExecutor)mainThread).getTaskCount(), mainThread.isShutdown()));
+
                 UpscaleRequest upscaleRequest;
-                while ((upscaleRequest = receivedRequests.poll(1, TimeUnit.MINUTES)) != null) {
+                while ((upscaleRequest = receivedRequests.poll(20, TimeUnit.SECONDS)) != null) {
                     if(upscaleRequest.getRetryCreateFailed() > MAX_CREATE_FAILURE_RETRIES || upscaleRequest.getRetryPoolFull() > MAX_CREATE_POOL_FULL_RETRIES){
                         log.info("Action pool %s not being expanded due to too many retries. pool full: %s and failed create: %s"
                                 .formatted(upscaleRequest.actionPool.getName(),upscaleRequest.getRetryPoolFull(), upscaleRequest.getRetryCreateFailed()));
