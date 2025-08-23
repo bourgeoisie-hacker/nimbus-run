@@ -65,9 +65,8 @@ public class Autoscaler {
         this.virtualThreadPerTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.actionPoolMap = populateActionPoolMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
-        this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,10,30, TimeUnit.SECONDS);
-        // This operation could take longer
-        var sc =this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,10,30, TimeUnit.SECONDS);
+        this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,1,30, TimeUnit.SECONDS);
+        var sc =this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,1,30, TimeUnit.SECONDS);
         this.processMessageThread.execute(this::processMessage);
         this.processMessageThread.execute(this::processRetryMessage);
 
@@ -87,9 +86,21 @@ public class Autoscaler {
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build();
-        Thread.sleep(1000);
+        Thread.sleep(5000);
 
-        log.info("Autoscaler started");
+        Thread.ofVirtual().start(()->{
+           while(true){
+               try{
+                   log.info("sched: shutdown={} terminated={} cancelled={} done={}",
+                           mainThread.isShutdown(), mainThread.isTerminated(),
+                           sc.isCancelled(), sc.isDone());
+                   Thread.sleep(1000);
+               }catch (Exception e){}
+
+           }
+        });
+
+
     }
 
     @VisibleForTesting
