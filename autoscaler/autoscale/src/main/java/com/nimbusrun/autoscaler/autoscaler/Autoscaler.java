@@ -86,19 +86,41 @@ public class Autoscaler {
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build();
+
+        Thread.ofPlatform().start(()->{
+            while(true){
+                try{
+                    log.info("Platform: sched: shutdown={} terminated={} cancelled={} done={}",
+                            mainThread.isShutdown(), mainThread.isTerminated(),
+                            sc.isCancelled(), sc.isDone());
+                    Thread.sleep(1000);
+                }catch (Exception e){}
+
+            }
+        });
+        Thread.ofVirtual().start(()->{
+            while(true){
+                try{
+                    log.info("Virtual: sched: shutdown={} terminated={} cancelled={} done={}",
+                            mainThread.isShutdown(), mainThread.isTerminated(),
+                            sc.isCancelled(), sc.isDone());
+                    Thread.sleep(1000);
+                }catch (Exception e){}
+
+            }
+        });
+        while(1==Integer.parseInt("1")){
+            try{
+                log.info("sched: shutdown={} terminated={} cancelled={} done={}",
+                        mainThread.isShutdown(), mainThread.isTerminated(),
+                        sc.isCancelled(), sc.isDone());
+                Thread.sleep(1000);
+            }catch (Exception e){}
+
+        }
         Thread.sleep(5000);
 
-        Thread.ofVirtual().start(()->{
-           while(true){
-               try{
-                   log.info("sched: shutdown={} terminated={} cancelled={} done={}",
-                           mainThread.isShutdown(), mainThread.isTerminated(),
-                           sc.isCancelled(), sc.isDone());
-                   Thread.sleep(1000);
-               }catch (Exception e){}
 
-           }
-        });
 
 
     }
