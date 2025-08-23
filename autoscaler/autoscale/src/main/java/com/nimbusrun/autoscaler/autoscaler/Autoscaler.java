@@ -55,7 +55,7 @@ public class Autoscaler {
     private final Cache<RunnerNameId, AtomicInteger> runnerIdDeleteCounter;
     private final Cache<String, AtomicInteger> actionPoolUpScale;
 
-    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MetricsContainer metricsContainer) {
+    public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MetricsContainer metricsContainer) throws InterruptedException {
         this.compute = compute;
         this.githubService = githubService;
         this.configReader = configReader;
@@ -87,6 +87,10 @@ public class Autoscaler {
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build();
+        Thread.sleep(1000);
+        log.info("main Processes Started %s".formatted(((ThreadPoolExecutor)processMessageThread).getActiveCount()));
+        log.info("Schedulged Processes Started %s".formatted(((ThreadPoolExecutor)mainThread).getTaskCount()));
+        log.info("Autoscaler started");
     }
 
     @VisibleForTesting
@@ -213,6 +217,7 @@ public class Autoscaler {
     public synchronized void processMessage() {
         while (true) {
             try {
+                log.debug("running process message");
                 UpscaleRequest upscaleRequest;
                 while ((upscaleRequest = receivedRequests.poll(1, TimeUnit.MINUTES)) != null) {
                     if(upscaleRequest.getRetryCreateFailed() > MAX_CREATE_FAILURE_RETRIES || upscaleRequest.getRetryPoolFull() > MAX_CREATE_POOL_FULL_RETRIES){
