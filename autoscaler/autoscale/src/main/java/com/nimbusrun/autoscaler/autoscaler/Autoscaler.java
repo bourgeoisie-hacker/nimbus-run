@@ -121,7 +121,7 @@ public class Autoscaler {
      */
     public void handleComputeAndRunners() {
         try {
-            log.debug("Running handle Compute Runners");
+            log.info("Running handle Compute Runners");
             List<Runner> runners = githubService.listRunnersInGroup();
             Map<String, Runner> runnersMap = runners.stream().collect(Collectors.toMap(Runner::getName, Function.identity()));
             updateRunnerInfo(runners);
@@ -134,6 +134,7 @@ public class Autoscaler {
         }
     }
     public void updateInstanceCountGauge(){
+        log.info("running update gauge");
         this.compute.listAllComputeInstances().forEach((key, insts)->
                 metricsContainer.updateInstanceCount(key, insts.instances().size()));
     }
