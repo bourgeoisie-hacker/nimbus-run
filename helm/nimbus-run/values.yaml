@@ -41,6 +41,9 @@ kafka:
       limits:
         memory: "2Gi"
         cpu: "1"
+    volumeClaimTemplates:
+      create: true
+      sizeInGigs: 10
   service:
     annotations: { }
     type: ClusterIP

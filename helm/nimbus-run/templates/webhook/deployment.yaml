@@ -16,7 +16,9 @@ spec:
       labels:
         {{- include "webhook.labels" . | nindent 8 }}
     spec:
+      {{- if .Values.webhook.serviceAccount.create}}
       serviceAccountName: {{ include "webhook.fullname" . }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{.Values.webhook.deployment.image }}

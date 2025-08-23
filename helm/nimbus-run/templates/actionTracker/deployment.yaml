@@ -16,7 +16,9 @@ spec:
       labels:
         {{- include "actionTracker.labels" . | nindent 8 }}
     spec:
+      {{- if .Values.actionTracker.serviceAccount.create}}
       serviceAccountName: {{ include "actionTracker.fullname" . }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{.Values.actionTracker.deployment.image }}

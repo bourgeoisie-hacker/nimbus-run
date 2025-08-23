@@ -16,7 +16,9 @@ spec:
       labels:
         {{- include "autoscaler.labels" . | nindent 8 }}
     spec:
+      {{- if .Values.autoscaler.serviceAccount.create}}
       serviceAccountName: {{ include "autoscaler.fullname" . }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{.Values.autoscaler.deployment.image }}
