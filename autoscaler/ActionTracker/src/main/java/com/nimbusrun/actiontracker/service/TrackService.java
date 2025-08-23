@@ -48,8 +48,8 @@ public class TrackService {
         this.maxRetries = Optional.ofNullable(maxRetries).orElse(MAX_RETRY_ATTEMPTS_DEFAULT);
         this.kafkaProducer = kafkaReceiver;
         this.actionGroupName = actionGroupName;
-        mainThread = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
-        runUpdateWatcher = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
+        mainThread = Executors.newSingleThreadExecutor();
+        runUpdateWatcher = Executors.newSingleThreadScheduledExecutor();
 
         mainThread.execute(this::runUpdateWatcher);
         runUpdateWatcher.scheduleWithFixedDelay(this::checkRetryStatus, 30, 20 ,TimeUnit.SECONDS);

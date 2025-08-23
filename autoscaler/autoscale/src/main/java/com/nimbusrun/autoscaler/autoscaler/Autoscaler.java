@@ -19,7 +19,6 @@ import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -49,7 +48,7 @@ public class Autoscaler {
     private GithubService githubService;
     private ConfigReader configReader;
     private final ExecutorService processMessageThread;
-    private final ExecutorService virtualThreadPerTaskExecutor;
+    private final ExecutorService threadPerTasks;
     private final Cache<String, AtomicBoolean> runnerLastBusy;
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
     private final Cache<RunnerNameId, AtomicInteger> runnerIdDeleteCounter;
@@ -60,9 +59,9 @@ public class Autoscaler {
         this.githubService = githubService;
         this.configReader = configReader;
         this.metricsContainer = metricsContainer;
-        this.processMessageThread = Executors.newFixedThreadPool(2, Thread.ofVirtual().factory());
-        this.mainThread = Executors.newScheduledThreadPool(2, Thread.ofVirtual().factory());
-        this.virtualThreadPerTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        this.processMessageThread = Executors.newFixedThreadPool(2);
+        this.mainThread = Executors.newScheduledThreadPool(2);
+        this.threadPerTasks = Executors.newCachedThreadPool();
         this.actionPoolMap = populateActionPoolMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
         this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,1,30, TimeUnit.SECONDS);
@@ -86,43 +85,6 @@ public class Autoscaler {
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(1))
                 .build();
-
-        Thread.ofPlatform().start(()->{
-            while(true){
-                try{
-                    log.info("Platform: sched: shutdown={} terminated={} cancelled={} done={}",
-                            mainThread.isShutdown(), mainThread.isTerminated(),
-                            sc.isCancelled(), sc.isDone());
-                    Thread.sleep(1000);
-                }catch (Exception e){}
-
-            }
-        });
-        Thread.ofVirtual().start(()->{
-            while(true){
-                try{
-                    log.info("Virtual: sched: shutdown={} terminated={} cancelled={} done={}",
-                            mainThread.isShutdown(), mainThread.isTerminated(),
-                            sc.isCancelled(), sc.isDone());
-                    Thread.sleep(1000);
-                }catch (Exception e){}
-
-            }
-        });
-        while(1==Integer.parseInt("1")){
-            try{
-                log.info("sched: shutdown={} terminated={} cancelled={} done={}",
-                        mainThread.isShutdown(), mainThread.isTerminated(),
-                        sc.isCancelled(), sc.isDone());
-                Thread.sleep(1000);
-            }catch (Exception e){}
-
-        }
-        Thread.sleep(5000);
-
-
-
-
     }
 
     @VisibleForTesting
@@ -138,7 +100,7 @@ public class Autoscaler {
         }else if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_FAILED_CREATE){
             metricsContainer.instanceRetriesFailedCreate(upscaleRequest.actionPool.getName());
         }
-        this.virtualThreadPerTaskExecutor.execute(() -> {
+        this.threadPerTasks.execute(() -> {
             try {
                 Thread.sleep(waitInMilliseconds);
                 this.receivedRequests.offer(upscaleRequest);
@@ -186,7 +148,7 @@ public class Autoscaler {
         map.keySet().stream()
                 .filter(key -> map.get(key).intValue() > Constants.DELETE_INSTANCE_RUNNER_THRESHOLD)
                 .forEach(key -> {
-                    this.virtualThreadPerTaskExecutor.execute(() -> {
+                    this.threadPerTasks.execute(() -> {
                         try {
                             if(this.compute.deleteCompute(key)){
                                 metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), true);
@@ -211,7 +173,7 @@ public class Autoscaler {
         map.keySet().stream()
                 .filter(key -> map.get(key).intValue() > Constants.DELETE_INSTANCE_RUNNER_THRESHOLD)
                 .forEach(key -> {
-                    this.virtualThreadPerTaskExecutor.execute(() -> {
+                    this.threadPerTasks.execute(() -> {
                         if(this.githubService.deleteRunner(key.id())){
                             log.info("Deleted orphaned runner name: {} id: {}", key.name(), key.id());
                         }
@@ -251,9 +213,6 @@ public class Autoscaler {
     public synchronized void processMessage() {
         while (true) {
             try {
-                log.debug("running process message");
-                log.info("main Processes Started %s".formatted(((ThreadPoolExecutor)processMessageThread).getActiveCount()));
-                log.info("Schedulged Processes Started %s and is shutdown? %s".formatted(((ThreadPoolExecutor)mainThread).getTaskCount(), mainThread.isShutdown()));
 
                 UpscaleRequest upscaleRequest;
                 while ((upscaleRequest = receivedRequests.poll(20, TimeUnit.SECONDS)) != null) {
@@ -277,7 +236,7 @@ public class Autoscaler {
                     UpscaleRequest finalUpscaleRequest = upscaleRequest;
                     numberOfInstances.incrementAndGet();
 
-                    this.virtualThreadPerTaskExecutor.execute(() -> {
+                    this.threadPerTasks.execute(() -> {
                         try {
                             log.info("Attempting to make instance for action pool: {}", finalPool.getName());
                             boolean successful = compute.createCompute(finalPool);
@@ -350,7 +309,7 @@ public class Autoscaler {
 
         });
         try {
-            List<Future<String>> list = this.virtualThreadPerTaskExecutor.invokeAll(callables);
+            List<Future<String>> list = this.threadPerTasks.invokeAll(callables);
             for(var f: list){
                 f.get();
             }
