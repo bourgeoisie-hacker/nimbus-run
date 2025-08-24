@@ -1,19 +1,32 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{include "autoscaler.fullname" . }}
-  labels:
-    {{include "autoscaler.labels" .}}
-data:
-  config.yaml: |
-    kafka:
-      {{- with .Values.kafka }}
-        {{- toYaml . | nindent 8}}
-      {{- end }}
+,--.  ,--.,--.          ,--.                   ,------.
+|  ,'.|  |`--',--,--,--.|  |-. ,--.,--. ,---.  |  .--. ',--.,--.,--,--,
+|  |' '  |,--.|        || .-. '|  ||  |(  .-'  |  '--'.'|  ||  ||      \
+|  | `   ||  ||  |  |  || `-' |'  ''  '.-'  `) |  |\  \ '  ''  '|  ||  |
+`--'  `--'`--'`--`--`--' `---'  `----' `----'  `--' '--' `----' `--''--'
 
-    github:
-      {{- with .Values.github}}
-        {{- toYaml . | nindent 8}}
-      {{- end }}
-    compute:
-      {{- include "autoscaler.computeSettings" . | nindent 8}}
+
+Configuration File:
+---
+name: {{.Values.autoscaler.settings.name}}
+logLevel: {{.Values.autoscaler.settings.logLevel}}
+computeType: {{.Values.compute.computeType}}
+retryPolicy:
+  maxJobInQueuedInMinutes: 6
+  maxTimeBtwRetriesInMinutes: 6
+  maxRetries: 3
+
+github:
+  groupName: {{ .Values.autoscaler.settings.github.groupName }}
+  organizationName: {{ .Values.autoscaler.settings.github.organizationName }}
+  token: {{ .Values.autoscaler.settings.github.token }}
+  webhookSecret: {{ .Values.autoscaler.settings.github.webhookSecret }}
+  webhookId: {{ .Values.autoscaler.settings.github.webhookId }}
+  replayFailedDeliverOnStartup: {{ .Values.autoscaler.settings.github.replayFailedDeliverOnStartup }}
+
+
+compute:
+  {{- include "autoscaler.computeSettings" . | nindent 8}}
+
+{{- with .Values.autoscaler.additionalSettings}}
+    {{- toYaml . | nindent 4}}
+{{- end }}

@@ -1,9 +1,12 @@
 
 package com.nimbusrun.autoscaler.github;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.nimbusrun.autoscaler.github.orm.listDelivery.DeliveryRecord;
 import com.nimbusrun.autoscaler.github.orm.runner.ListSelfHostedRunners;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.ListRunnerGroup;
@@ -18,6 +21,7 @@ import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.*;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.*;
+import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.ProtocolException;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
@@ -27,8 +31,14 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.security.*;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiPredicate;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Slf4j
 @Component
@@ -42,22 +52,31 @@ public class GithubService implements GithubApi {
     @Getter
     private final String runnerGroupName;
 
+    @Getter
+    private final String webhookId;
+    @Getter
+    private final boolean replayFailedDeliverOnStartup;
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
         OBJECT_MAPPER.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        OBJECT_MAPPER.findAndRegisterModules();
     }
 
 
     public GithubService(@Value("${github.token}") String token,
                          @Value("${github.organizationName}") String organization,
                          @Value("${github.groupName}") String runnerGroupName,
-                         @Value("${spring.application.name}") String actionGroupName) {
+                         @Value("${github.webhookId:#{null}}") String webhookId,
+                         @Value("${github.replayFailedDeliverOnStartup:#{false}}") boolean replayFailedDeliverOnStartup) {
         this.token = token;
         this.organization = organization;
         this.runnerGroupName = runnerGroupName;
         this.runnerGroupId = resolveRunnerGroupId(runnerGroupName);
+        this.webhookId = webhookId;
+        this.replayFailedDeliverOnStartup = replayFailedDeliverOnStartup;
     }
 
     private Integer resolveRunnerGroupId(String groupName) {
@@ -76,7 +95,7 @@ public class GithubService implements GithubApi {
         try {
             return fetchPaginatedData(
                     new HttpGet(String.format("https://api.github.com/orgs/%s/actions/runner-groups", organization)),
-                    ListRunnerGroup.class);
+                    new TypeReference<ListRunnerGroup>(){});
         } catch (Exception e) {
             log.error("Unable to fetch runner groups", e);
             return Collections.emptyList();
@@ -128,7 +147,7 @@ public class GithubService implements GithubApi {
     public List<Runner> listRunnersInGroup(String groupId) {
         try {
             var request = new HttpGet(String.format("https://api.github.com/orgs/%s/actions/runner-groups/%s/runners", organization, groupId));
-            var pages = fetchPaginatedData(request, ListSelfHostedRunners.class);
+            var pages = fetchPaginatedData(request, new TypeReference<ListSelfHostedRunners>(){});
             List<Runner> allRunners = new ArrayList<>();
             pages.forEach(page -> allRunners.addAll(page.getRunners()));
             return allRunners.stream().filter(this::runnerHaveCorrectActionGroupLabel).toList();
@@ -164,39 +183,76 @@ public class GithubService implements GithubApi {
         }
         return false;
     }
-    private <T> List<T> fetchPaginatedData(HttpUriRequestBase request, Class<T> clazz)
+
+    public List<DeliveryRecord> listDeliveries() throws ProtocolException, GeneralSecurityException, IOException {
+        HttpGet httpGet = new HttpGet("https://api.github.com/orgs/%s/hooks/%s/deliveries".formatted(this.organization, this.webhookId));
+         var dd =  fetchPaginatedData(httpGet,new TypeReference<List<DeliveryRecord>>(){},(a,b)-> a.stream().anyMatch(d-> {
+             return Duration.between(d.getDeliveredAt(), ZonedDateTime.now()).toHours() > 24;
+//             return d.getDeliveredAt().toLocalDate().isBefore(LocalDate.now());
+         }));
+        return dd.stream().flatMap(Collection::stream).toList();
+    }
+
+    public boolean reDeliveryFailures(String deliveryId) {
+        HttpPost httpPost = new HttpPost("https://api.github.com/orgs/%s/hooks/%s/deliveries/%s/attempts".formatted(this.organization, this.webhookId, deliveryId));
+        try(var client = createHttpClient(); var response = client.execute(httpPost)){
+            if(response.getCode() >= 200 && 300 > response.getCode()){
+                return true;
+            }
+        }catch (Exception e ){
+            String msg = "Failed to redeliver id: %s".formatted(deliveryId);
+            log.error(msg, e);
+        }
+        return false;
+    }
+
+    private <T> List<T> fetchPaginatedData(HttpUriRequestBase request, TypeReference<T> clazz)
             throws GeneralSecurityException, IOException, ProtocolException {
+       return fetchPaginatedData(request, clazz, (a,b)->false);
+    }
+    private <T> List<T> fetchPaginatedData(HttpUriRequestBase request, TypeReference<T> clazz, BiPredicate<T, Integer> shouldStop)
+            throws GeneralSecurityException, IOException, ProtocolException {
+        List<T> results = new ArrayList<>();
+        Function<String, T> func = (json)-> {
+            try {
+                T t = OBJECT_MAPPER.readValue(json, clazz);
+                results.add(t);
+                return t;
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        };
+
         try (var client = createHttpClient(); var response = client.execute(request)) {
-            List<String> pages = new ArrayList<>();
-            collectPaginatedResponses(response, client, pages);
+
+            collectPaginatedResponses(response, client,func,shouldStop);
             if(response.getCode()>=300){
                 log.error("Received response code %s from request %s".formatted(response.getCode(),request));
-            }
-            List<T> results = new ArrayList<>();
-            for (String json : pages) {
-                results.add(OBJECT_MAPPER.readValue(json, clazz));
             }
             return results;
         }
     }
 
-    private void collectPaginatedResponses(CloseableHttpResponse response, CloseableHttpClient client, List<String> pages)
+    private <T>void collectPaginatedResponses(CloseableHttpResponse response, CloseableHttpClient client,  Function<String, T> pageProcessor, BiPredicate<T, Integer> shouldStop)
             throws IOException, ProtocolException {
-        pages.add(new String(response.getEntity().getContent().readAllBytes()));
-        var linkHeader = response.getHeader("link");
-        if (linkHeader != null) {
-            Arrays.stream(linkHeader.getValue().split(","))
-                    .filter(link -> link.contains("rel=\"next\""))
-                    .map(link -> link.split(";")[0].replace("<", "").replace(">", "").trim())
-                    .findFirst()
-                    .ifPresent(nextUrl -> {
-                        try (var nextResp = client.execute(new HttpGet(nextUrl))) {
-                            collectPaginatedResponses(nextResp, client, pages);
-                        } catch (IOException | ProtocolException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-        }
+        Header linkHeader;
+        int count = 1;
+        do {
+            T processed = pageProcessor.apply(new String(response.getEntity().getContent().readAllBytes()));
+            if(shouldStop.test(processed,count)){
+                return;
+            }
+             linkHeader = response.getHeader("link");
+            if (linkHeader != null) {
+                String nextUrl = Arrays.stream(linkHeader.getValue().split(","))
+                        .filter(link -> link.contains("rel=\"next\""))
+                        .map(link -> link.split(";")[0].replace("<", "").replace(">", "").trim())
+                        .findFirst()
+                        .orElse(null);
+                response = client.execute(new HttpGet(nextUrl));
+            }
+            count++;
+        }while(linkHeader != null );
     }
 
     private CloseableHttpClient createHttpClient() throws GeneralSecurityException {

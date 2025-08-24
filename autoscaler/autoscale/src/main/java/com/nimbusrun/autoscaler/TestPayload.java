@@ -33,7 +33,8 @@ public class TestPayload {
             org.apache.hc.core5.http.io.entity.StringEntity entity = new StringEntity(payload);
             var post = new HttpPost("http://localhost:8080/webhook");
             post.setEntity(entity);
-            client.execute(post);
+            var response =client.execute(post);
+            System.out.println(response.getCode());
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
         }

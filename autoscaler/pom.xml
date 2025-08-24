@@ -12,17 +12,15 @@
     </parent>
     <groupId>com.nimbusrun</groupId>
     <artifactId>autoscaler</artifactId>
-    <version>0.1.10</version>
+    <version>0.2.0</version>
     <packaging>pom</packaging>
 
     <modules>
+        <module>common</module>
         <module>compute/ComputeApi</module>
         <module>compute/Aws</module>
         <module>compute/Gcp</module>
-        <module>ActionTracker</module>
-        <module>Webhook</module>
         <module>autoscale</module>
-        <module>common</module>
     </modules>
 <dependencyManagement>
     <dependencies>

@@ -1,80 +1,19 @@
 
-standalone: false
-
-github:
-  groupName: ""
-  organizationName: ""
-  # This will be stored inside the configuration file as is.
-  # When the autoscaler starts up it'll try to resolve it as an environment variable
-  token: "${GITHUB_TOKEN}"
-  webhookSecret: "${WEBHOOK_SECRET}"
-## You should create a kafka cluster outside of this helm chart. This makes use `auto.create.topics.enable`.
-# It doesn't take advantage of clearn.policy, retention.ms or compression.type. Take a look at strimzi-kafka-operator if
-# if you want to manage a kakfa cluster in production. https://github.com/strimzi/strimzi-kafka-operator
-kafka:
-  create: false
-#  brokerOverride: # set this if you have your own cluster setup
-  webhookTopic:
-    name: webhook
-  retryTopic:
-    name: retry
-  deployment:
-    image: apache/kafka:4.0.0
-    labels: { }
-    nodeSelector: { }
-    affinity: { }
-    tolerations: { }
-    ports:
-      client:
-        port: 9092
-        portName: client
-      controller:
-        port: 9093
-        portName: controller
-    volumes: [ ]
-    volumeMounts: [ ]
-    environmentVariables: [ ]
-    resources:
-      requests:
-        memory: "2Gi"
-        cpu: "1"
-      limits:
-        memory: "2Gi"
-        cpu: "1"
-    volumeClaimTemplates:
-      create: true
-      sizeInGigs: 10
-  service:
-    annotations: { }
-    type: ClusterIP
-  envoy:
-    configmap:
-      configKey: "envoy.yaml"
-    ports:
-      client:
-        port: 8082
-        portName: envoyClient
-      controller:
-        port: 8083
-        portName: envoyClient
-
-
 compute:
   computeType: "aws" # aws | gcp | none(fails)
   aws:
-    name: aws-autoscaler
     # Fallback settings applied if not overridden in any action pool
     defaultSettings:
       # Minutes of idle time before scaling down an instance
       # (account for instance boot and runner startup time)
-      idleScaleDownInMinutes: 10
+      idleScaleDownInMinutes:
       # AWS region for instance provisioning
-      region: us-east-2
+      region:
       # AWS subnet ID for instance networking
-      subnet: subnet-1234
+      subnet:
 
       # AWS security group ID for instance firewall rules
-      securityGroup: sg-1234
+      securityGroup:
 
       # AWS Credentials Profile to used. This will look for the aws credential file at the default location or if you specify the AWS_SHARED_CREDENTIALS_FILE.
       # If you don't specify this value then it will use the DefaultCredential provider to obtain credentials.
@@ -84,96 +23,121 @@ compute:
       # Disk configuration
       diskSettings:
         # Supported values: gp3, gp2, io2, io1, st1
-        type: "gp3"
+        type:
         # Disk size in GiB
-        size: 20
+        size:
 
       # EC2 instance type for GitHub runners
-      instanceType: t3.medium
+      instanceType:
 
       # Maximum number of instances (0 = no limit)
-      maxInstanceCount: 10
+      maxInstanceCount:
 
       # Name of the EC2 key pair to inject for SSH access
-      keyPairName: my-key-pair
+      keyPairName:
 
     # Default action pool placeholder (inherits from defaultSettings)
     defaultActionPool:
-      name: default-pool
+      name:
 
     # Specific action pools (override defaultSettings as needed)
     actionPools:
-      - name: burstable
-        instanceType: t3a.xlarge
-        maxInstanceCount: 9
-        subnet: subnet-1234
-        securityGroup: securityGroup-1234
-        diskSettings:
-          type: gp2
-          size: 4
-      - name: heavy-compute
-        instanceType: c4.2xlarge
-        maxInstanceCount: 5
+#      - name: burstable
+#        instanceType: t3a.xlarge
+#        maxInstanceCount: 9
+#        subnet: subnet-1234
+#        securityGroup: securityGroup-1234
+#        diskSettings:
+#          type: gp2
+#          size: 4
+
   gcp:
     # Fallback settings applied if not overridden in any action pool
     defaultSettings:
       # Minutes of idle time before scaling down an instance
       # (account for instance boot and runner startup time)
-      idleScaleDownInMinutes: 10
+      idleScaleDownInMinutes:
 
       # GCP project identifier for resource provisioning
       projectId:
 
       # GCP region to create instances in
-      region: us-east1
+      region:
 
       # Full path to the GCP subnetwork for instance networking
-      subnet: regions/us-east1/subnetworks/default
+      subnet:
 
       # Full path to the GCP VPC network for instance networking
-      vpc: global/networks/default
+      vpc:
 
       # Available zones for instance placement (automatically balances across these)
-      zones:
-        - us-east1-b
-        - us-east1-c
-        - us-east1-d
+      zones: []
 
       # Path to service account JSON for authenticating to GCP APIs
       # If unset, uses the default credentials provider chain
-      serviceAccountPath: /path/to/service-account-file.json
+      serviceAccountPath:
 
       # Disk configuration
       diskSettings:
         # Disk size in GiB
-        size: 20
+        size:
 
       # GCE machine type for GitHub runners
-      instanceType: e2-highcpu-4
+      instanceType:
 
       # Maximum number of instances (0 = no limit)
-      maxInstanceCount: 10
+      maxInstanceCount:
 
     # Default action pool (inherits all fields from defaultSettings)
     defaultActionPool:
-      name: default-pool
+      name:
 
     # Specific action pools (override defaultSettings as needed)
     actionPools:
-      - name: test
-        instanceType: n2d-standard-2
-        maxInstanceCount: 5
-        diskSettings:
-          size: 15
+#      - name: test
+#        instanceType: n2d-standard-2
+#        maxInstanceCount: 5
+#        diskSettings:
+#          size: 15
 
 autoscaler:
   settings:
-    name: "autoscaler"
-    logLevel: info
-    kafkaConsumerGroup: autoscaler-1
+    name:
+    logLevel:
+    github:
+      groupName: ""
+      organizationName: ""
+      # This will be stored inside the configuration file as is.
+      # When the autoscaler starts up it'll try to resolve it as an environment variable. For example:
+      # token: "${GITHUB_TOKEN}"
+      # After words you'll need to add an environment variable that gets its valuefrom a secret. for example.
+      #
+      #  environmentVariables:
+      #  - name: GITHUB_TOKEN
+      #    valueFrom:
+      #      secretKeyRef:
+      #        name: mysecret  # Name of the Secret
+      #        key: username
+
+      token: "${GITHUB_TOKEN}"
+      webhookSecret: "${WEBHOOK_SECRET}"
+      #  webhookSecret: test
+      webhookId:
+      replayFailedDeliverOnStartup: true
+    retryPolicy:
+      # Maximum minutes a job may stay in “Queued” state before being retried
+      # Once exceeded, the job is sent to the retry topic
+      maxJobInQueuedInMinutes: 6
+
+      # Minimum minutes to wait between retry attempts for the same job
+      maxTimeBtwRetriesInMinutes: 6
+
+      # Maximum number of retry attempts per job
+      maxRetries: 3
+  # This is a springboot app. Any additional settings set here will be injected in the application.yaml file that is generated.
   additionalSettings: { }
   deployment:
-    image: bourgeoisiehacker/autoscaler:0.1.0
+    image: bourgeoisiehacker/autoscaler:0.1.10
     labels: { }
     nodeSelector: { }
     affinity: { }
@@ -187,11 +151,11 @@ autoscaler:
     environmentVariables: []
     resources:
       requests:
-        memory: "2Gi"
-        cpu: "1"
+        memory: "4Gi"
+        cpu: "2"
       limits:
-        memory: "2Gi"
-        cpu: "1"
+        memory: "4Gi"
+        cpu: "2"
   serviceAccount:
     create: true
     annotations: { }
@@ -204,92 +168,4 @@ autoscaler:
     nimbusRun:
       keyName: config.yaml
 
-
-actionTracker:
-  settings:
-    kafkaConsumerGroup: actionTracker
-    name: "ActionTracker"
-    retryPolicy:
-      # Maximum minutes a job may stay in “Queued” state before being retried
-      # Once exceeded, the job is sent to the retry topic
-      maxJobInQueuedInMinutes: 6
-
-      # Minimum minutes to wait between retry attempts for the same job
-      maxTimeBtwRetriesInMinutes: 6
-
-      # Maximum number of retry attempts per job
-      maxRetries: 3
-  additionalSettings: { }
-  deployment:
-    image: bourgeoisiehacker/action-tracker:0.1.0
-    labels: { }
-    nodeSelector: { }
-    affinity: { }
-    tolerations: { }
-    ports:
-      http:
-        port: 8080
-        portName: http
-    volumes: [ ]
-    volumeMounts: [ ]
-    environmentVariables: [ ]
-    resources:
-      requests:
-        memory: "2Gi"
-        cpu: "1"
-      limits:
-        memory: "2Gi"
-        cpu: "1"
-  serviceAccount:
-    create: true
-    annotations: { }
-    labels: { }
-  service:
-    annotations: { }
-    port: 8080
-    type: ClusterIP
-  configMap:
-    nimbusRun:
-      keyName: config.yaml
-
-webhook:
-  settings:
-    # Application name for metrics reporting
-    name: "Webhook"
-    github:
-      # Optional webhook secret to verify incoming requests.
-      webhookSecret: test
-    kafkaConsumerGroup: webhook
-  additionalSettings: { }
-  deployment:
-    image: bourgeoisiehacker/webhook:0.1.0
-    labels: { }
-    nodeSelector: { }
-    affinity: { }
-    tolerations: { }
-    ports:
-      http:
-        port: 8080
-        portName: http
-    volumes: [ ]
-    volumeMounts: [ ]
-    environmentVariables: [ ]
-    resources:
-      requests:
-        memory: "2Gi"
-        cpu: "1"
-      limits:
-        memory: "2Gi"
-        cpu: "1"
-  serviceAccount:
-    create: true
-    annotations: { }
-    labels: { }
-  service:
-    annotations: { }
-    port: 8080
-    type: ClusterIP
-  configMap:
-    nimbusRun:
-      keyName: config.yaml
 

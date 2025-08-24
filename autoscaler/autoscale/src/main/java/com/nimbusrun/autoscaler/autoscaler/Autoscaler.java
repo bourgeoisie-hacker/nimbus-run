@@ -6,22 +6,28 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
+import com.nimbusrun.autoscaler.github.orm.listDelivery.DeliveryRecord;
 import com.nimbusrun.autoscaler.metrics.MetricsContainer;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.ListInstanceResponse;
-import com.nimbusrun.autoscaler.config.ConfigReader;
+import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
+import com.nimbusrun.webhook.WebhookReceiver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.core5.http.ProtocolException;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -33,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-public class Autoscaler {
+public class Autoscaler implements WebhookReceiver {
 
     public static final Integer MAX_CREATE_FAILURE_RETRIES = 3;
     public static final Integer MAX_CREATE_POOL_FULL_RETRIES = 1000;
@@ -90,12 +96,16 @@ public class Autoscaler {
     }
 
     @VisibleForTesting
-    Map<String, ActionPool> populateActionPoolMap() {
-        return this.configReader.getActionPoolMap().values().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b, ConcurrentHashMap::new));
+    private Map<String, ActionPool> populateActionPoolMap() {
+        return this.getConfigReader().getActionPoolMap().values().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b, ConcurrentHashMap::new));
+    }
+
+    private ConfigReader getConfigReader() {
+        return configReader;
     }
 
 
-    public void scheduleRetry() {
+    private void scheduleRetry() {
         while(true) {
             try {
                 Thread.sleep(50);
@@ -119,7 +129,7 @@ public class Autoscaler {
             }
         }
     }
-    public void retryLater(long waitInMilliseconds, UpscaleRequest upscaleRequest) {
+    private void retryLater(long waitInMilliseconds, UpscaleRequest upscaleRequest) {
         log.debug("Will retry upscale for action pool %s".formatted(upscaleRequest.actionPool.getName()));
         if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_POOL_FULL) {
             metricsContainer.instanceRetriesPoolFull(upscaleRequest.actionPool.getName());
@@ -132,9 +142,8 @@ public class Autoscaler {
     /**
      * These are ran together so that we limit the number of times we must interact with github api.
      */
-    public void handleComputeAndRunners() {
+    private void handleComputeAndRunners() {
         try {
-            log.info("Running handle Compute Runners");
             List<Runner> runners = githubService.listRunnersInGroup();
             Map<String, Runner> runnersMap = runners.stream().collect(Collectors.toMap(Runner::getName, Function.identity()));
             updateRunnerInfo(runners);
@@ -146,13 +155,12 @@ public class Autoscaler {
             log.error("Failed the main loop ", e);
         }
     }
-    public void updateInstanceCountGauge(){
-        log.info("running update gauge");
+    private void updateInstanceCountGauge(){
         this.compute.listAllComputeInstances().forEach((key, insts)->
                 metricsContainer.updateInstanceCount(key, insts.instances().size()));
     }
 
-    public void updateRunnerInfo(List<Runner> runners) {
+    private void updateRunnerInfo(List<Runner> runners) {
         try {
             runners.stream().forEach(r->{
                 this.runnerLastBusy.get(r.getName()+"", key->new AtomicBoolean(true));
@@ -162,7 +170,7 @@ public class Autoscaler {
         }
     }
 
-    public void deleteExpiredInstances() {
+    private void deleteExpiredInstances() {
         var map = new HashMap<>(instanceIdDeleteCounter.asMap());
         map.keySet().stream()
                 .filter(key -> map.get(key).intValue() > Constants.DELETE_INSTANCE_RUNNER_THRESHOLD)
@@ -187,7 +195,7 @@ public class Autoscaler {
                 });
     }
 
-    public void deleteExpiredRunners() {
+    private void deleteExpiredRunners() {
         var map = new HashMap<>(runnerIdDeleteCounter.asMap());
         map.keySet().stream()
                 .filter(key -> map.get(key).intValue() > Constants.DELETE_INSTANCE_RUNNER_THRESHOLD)
@@ -205,16 +213,16 @@ public class Autoscaler {
                 });
     }
 
-    public void incrementInstanceIdDeleteCounter(DeleteInstanceRequest deleteInstanceRequest) {
+    private void incrementInstanceIdDeleteCounter(DeleteInstanceRequest deleteInstanceRequest) {
         this.instanceIdDeleteCounter.get(deleteInstanceRequest, (key) -> new AtomicInteger(1)).incrementAndGet();
     }
 
-    public void incrementRunnerIdDeleteCounter(Runner runner) {
+    private void incrementRunnerIdDeleteCounter(Runner runner) {
         this.runnerIdDeleteCounter.get(new RunnerNameId(runner.getName(),runner.getId()+""), (key) -> new AtomicInteger(1)).incrementAndGet();
 
     }
 
-    public synchronized void processRetryMessage(){
+    private synchronized void processRetryMessage(){
         while(true){
             log.debug("running retry");
             try{
@@ -229,7 +237,7 @@ public class Autoscaler {
         }
     }
 
-    public synchronized void processMessage() {
+    private synchronized void processMessage() {
         while (true) {
             try {
 
@@ -280,13 +288,13 @@ public class Autoscaler {
         }
     }
 
-    public void orphanedRunners(List<Runner> runners){
+    private void orphanedRunners(List<Runner> runners){
         runners.stream()
                 .filter(r-> "offline".equalsIgnoreCase(r.getStatus()))
                 .peek(r-> log.debug("Incrementing delete counter for orphan runner {}", r.getName()))
                 .forEach(r-> incrementRunnerIdDeleteCounter(r));
     }
-    public void scaleDownInstance(Map<String, Runner> runners) {
+    private void scaleDownInstance(Map<String, Runner> runners) {
 
         List<Callable<String>> callables = new ArrayList<>();
         this.actionPoolMap.forEach((key, actionPool) -> {
@@ -371,6 +379,8 @@ public class Autoscaler {
         return false;
     }
 
+
+
     public enum UpScaleReason {
         NEW_REQUEST, RETRY_POOL_FULL, RETRY_FAILED_CREATE;
 
@@ -380,6 +390,29 @@ public class Autoscaler {
 
 
     }
+
+    @PostConstruct
+    public void redeliver() throws ProtocolException, GeneralSecurityException, IOException {
+        if(!this.githubService.isReplayFailedDeliverOnStartup() || this.githubService.getWebhookId()==null){
+            return;
+        }
+        try {
+            List<DeliveryRecord> records = this.githubService.listDeliveries();
+            Map<String, List<DeliveryRecord>> map = records.stream().collect(Collectors.groupingBy(d -> d.getGuid()));
+            List<DeliveryRecord> redeliver = new ArrayList<>();
+            map.forEach((guid, recordList) -> {
+                recordList.stream().max(Comparator.comparing(DeliveryRecord::getDeliveredAt))
+                        .filter(d -> d.getStatusCode() >= 300)
+                        .ifPresent(redeliver::add);
+            });
+            for (DeliveryRecord del : redeliver){
+                this.githubService.reDeliveryFailures(del.getId());
+            }
+        }catch (Exception e){
+            Utils.excessiveErrorLog("Failed to run redeliver process for failed deliveries",e,log);
+        }
+    }
+
     public static class UpscaleRequest{
         @Getter
         private int retryPoolFull;
