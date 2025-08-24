@@ -38,8 +38,9 @@ public class Autoscaler {
     public static final Integer MAX_CREATE_FAILURE_RETRIES = 3;
     public static final Integer MAX_CREATE_POOL_FULL_RETRIES = 1000;
 
-    private final ScheduledExecutorService mainThread;
+    private final ScheduledExecutorService scheduledExecutorService;
     public BlockingDeque<UpscaleRequest> receivedRequests = new LinkedBlockingDeque<>();
+    public BlockingDeque<Pause<UpscaleRequest>> retryUpscaleRequests = new LinkedBlockingDeque<>();
     public BlockingDeque<GithubActionJob> receivedRetryRequests = new LinkedBlockingDeque<>();
     private final Map<String, ActionPool> actionPoolMap;
     private final Optional<ActionPool> defaultActionPool;
@@ -59,15 +60,16 @@ public class Autoscaler {
         this.githubService = githubService;
         this.configReader = configReader;
         this.metricsContainer = metricsContainer;
-        this.processMessageThread = Executors.newFixedThreadPool(2);
-        this.mainThread = Executors.newScheduledThreadPool(2);
+        this.processMessageThread = Executors.newFixedThreadPool(3);
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(2);
         this.threadPerTasks = Executors.newCachedThreadPool();
         this.actionPoolMap = populateActionPoolMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
-        this.mainThread.scheduleWithFixedDelay(this::handleComputeAndRunners,1,30, TimeUnit.SECONDS);
-        var sc =this.mainThread.scheduleWithFixedDelay(this::updateInstanceCountGauge,1,30, TimeUnit.SECONDS);
+        this.scheduledExecutorService.scheduleWithFixedDelay(this::handleComputeAndRunners,1,30, TimeUnit.SECONDS);
+        var sc =this.scheduledExecutorService.scheduleWithFixedDelay(this::updateInstanceCountGauge,1,30, TimeUnit.SECONDS);
         this.processMessageThread.execute(this::processMessage);
         this.processMessageThread.execute(this::processRetryMessage);
+        this.processMessageThread.execute(this::scheduleRetry);
 
         this.runnerLastBusy = Caffeine.newBuilder()
                 .maximumSize(1_000_000)
@@ -93,21 +95,38 @@ public class Autoscaler {
     }
 
 
+    public void scheduleRetry() {
+        while(true) {
+            try {
+                Thread.sleep(50);
+                Pause<UpscaleRequest> upscaleRequestPause;
+                List<Pause<UpscaleRequest>> addBack = new ArrayList<>();
+                while ((upscaleRequestPause = this.retryUpscaleRequests.poll(1, TimeUnit.MINUTES)) != null) {
+                    try {
+                        if (Instant.now().isAfter(upscaleRequestPause.instant())) {
+                            this.receivedRequests.offer(upscaleRequestPause.object());
+                        } else {
+                            addBack.add(upscaleRequestPause);
+                        }
+                    } catch (Exception e) {
+                        log.error("Some how there's an excpetion here", e);
+                    }
+                }
+                addBack.forEach(this.retryUpscaleRequests::offer);
 
+            } catch (Exception e) {
+                log.error("Rescheduling experienced an error", e);
+            }
+        }
+    }
     public void retryLater(long waitInMilliseconds, UpscaleRequest upscaleRequest) {
-        if(upscaleRequest.upScaleReason == UpScaleReason.RETRY_POOL_FULL){
+        log.debug("Will retry upscale for action pool %s".formatted(upscaleRequest.actionPool.getName()));
+        if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_POOL_FULL) {
             metricsContainer.instanceRetriesPoolFull(upscaleRequest.actionPool.getName());
-        }else if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_FAILED_CREATE){
+        } else if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_FAILED_CREATE) {
             metricsContainer.instanceRetriesFailedCreate(upscaleRequest.actionPool.getName());
         }
-        this.threadPerTasks.execute(() -> {
-            try {
-                Thread.sleep(waitInMilliseconds);
-                this.receivedRequests.offer(upscaleRequest);
-            } catch (InterruptedException e) {
-            }
-        });
-
+        retryUpscaleRequests.offer(new Pause<>(Instant.now().plusMillis(waitInMilliseconds), upscaleRequest));
     }
 
     /**
@@ -354,6 +373,10 @@ public class Autoscaler {
 
     public enum UpScaleReason {
         NEW_REQUEST, RETRY_POOL_FULL, RETRY_FAILED_CREATE;
+
+
+    }
+    public static record Pause<T>(Instant instant, T object){
 
 
     }
