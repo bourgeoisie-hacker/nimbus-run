@@ -8,26 +8,19 @@ computeType: gcp
 # These defaults can be overridden via Spring Boot properties.
 logLevel: "info"
 
-# When true, runs in standalone mode:
-#  • Disables the Kafka queue listener
-#  • Enables the HTTP webhook endpoint at /webhook
-# Note: Standalone mode assumes no other Nimbus Run components are active.
-standalone: false
 
-# Kafka integration settings
-kafka:
-  # Topic where failed or delayed jobs will be retried
-  retryTopic: retry
+# Retry policy for jobs taking to long
+retryPolicy:
 
-  # Topic to consume incoming GitHub Actions webhook events
-  webhookTopic: webhook
+  # The max duration a github action job can remain in a Queued state before retrying to process it.
+  # The job will be sent to the retry topic
+  maxJobInQueuedInMinutes: 6
 
-  # Kafka broker address
-  broker: localhost:9092
+  # The minimum duration between attempting subsequent retries for a job.
+  maxTimeBtwRetriesInMinutes: 6
 
-  # Unique consumer group ID for the autoscaler
-  # Changing this may cause in-flight jobs to be reprocessed.
-  consumerGroupId: gcp-autoscaler
+  # Max retries for a job
+  maxRetries: 3
 
 # GitHub integration settings
 github:
@@ -45,6 +38,12 @@ github:
   # Optional webhook secret to verify incoming requests.
   # Only required in standalone mode when using GitHub webhooks.
   webhookSecret: test
+
+  # This is used to redeliver older webhooks that failed to be sent. This is the id of the github webhook
+  # Make sure you make this a string otherwise it'll be converted into scientific notation
+  webhookId: "565459826"
+  # If you have set the webhookId then you can set this to true for the system on startup to resend all failed sent webhooks that were sent TODAY
+  replayFailedDeliverOnStartup: true
 
 # HTTP server configuration
 server:

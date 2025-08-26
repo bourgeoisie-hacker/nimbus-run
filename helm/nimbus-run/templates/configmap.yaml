@@ -20,7 +20,7 @@ data:
       organizationName: {{ .Values.autoscaler.settings.github.organizationName }}
       token: {{ .Values.autoscaler.settings.github.token }}
       webhookSecret: {{ .Values.autoscaler.settings.github.webhookSecret }}
-      webhookId: {{ .Values.autoscaler.settings.github.webhookId }}
+      webhookId: {{ .Values.autoscaler.settings.github.webhookId | squote}}
       replayFailedDeliverOnStartup: {{ .Values.autoscaler.settings.github.replayFailedDeliverOnStartup }}
 
     compute:

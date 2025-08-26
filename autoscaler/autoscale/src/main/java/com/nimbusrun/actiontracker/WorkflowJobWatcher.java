@@ -1,4 +1,4 @@
-package com.nimbusrun.actiontracker.actiontracker;
+package com.nimbusrun.actiontracker;
 
 import com.nimbusrun.github.GithubActionJob;
 import lombok.Data;

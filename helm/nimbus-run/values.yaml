@@ -137,7 +137,7 @@ autoscaler:
   # This is a springboot app. Any additional settings set here will be injected in the application.yaml file that is generated.
   additionalSettings: { }
   deployment:
-    image: bourgeoisiehacker/autoscaler:0.1.10
+    image: bourgeoisiehacker/autoscaler:0.2.0
     labels: { }
     nodeSelector: { }
     affinity: { }

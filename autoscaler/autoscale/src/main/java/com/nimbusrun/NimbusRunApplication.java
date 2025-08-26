@@ -22,8 +22,6 @@ public class NimbusRunApplication {
         setSystemProperties();
         var ctx = SpringApplication.run(NimbusRunApplication.class, args);
 //        ctx.getBean(GithubService.class).reDeliveryFailures("120095431376");
-        var list = ctx.getBean(GithubService.class).listDeliveries();
-        System.out.println(list);
     }
 
     public static void setSystemProperties() throws IOException {
