@@ -48,4 +48,4 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: "*.pom"
-          commit_message: "Incrementing version to ${{ }}[skip ci]"
+          commit_message: "Incrementing version to ${{steps.next_version.outputs.new_version }}[skip ci]"
