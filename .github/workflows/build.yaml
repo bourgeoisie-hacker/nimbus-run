@@ -39,9 +39,9 @@ jobs:
       - name: deploy docker container
         run: |
           docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
-          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}"
+          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
           docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
-          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}"
+          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
           docker push  docker.io/bourgeoisiehacker/autoscaler:latest
 
       - name: next version
