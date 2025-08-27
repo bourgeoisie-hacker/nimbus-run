@@ -21,14 +21,13 @@ jobs:
       - name: release name
         id: release_name
         run: |
-          echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
-          echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+          echo "release_name=v${{ needs.build-and-push.outputs.release_version }}" >> $GITHUB_OUTPUT
         working-directory: autoscaler
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
           helm repo index . --merge docs/index.yaml
-          ls nimbus-run-${{ steps.release_name.outputs.version }}.tgz
+          ls nimbus-run-${{ needs.build-and-push.outputs.release_version }}.tgz
           echo "just ls"
           ls
 
@@ -43,7 +42,7 @@ jobs:
             Automated release created from tag ${{ steps.release_name.outputs.release_name }}.
             See changes in this release.
           files: |
-            nimbus-run-${{ steps.release_name.outputs.version }}.tgz
+            nimbus-run-${{ needs.build-and-push.outputs.release_version }}.tgz
       - name: Pull Remote Changes
         run: git pull -r
       - name: package helm
@@ -58,6 +57,8 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{steps.tag_version.outputs.tag_version}}
     permissions:
       contents: write
     steps:
