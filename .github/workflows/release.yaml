@@ -19,6 +19,7 @@ jobs:
       - name: release name
         id: release_name
         run: echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+        working-directory: autoscaler
 
       - name: Create GitHub Release
         id: create_release
@@ -62,7 +63,7 @@ jobs:
       - name: Tag Version
         id: tag_version
         run: echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
-
+        working-directory: autoscaler
 #      - name: deploy docker container
 #        run: |
 #          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
