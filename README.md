@@ -24,31 +24,36 @@ That’s where NimbusRun shines:
 
 Traditional VM-based runners usually mean a fixed number of servers sitting idle (a.k.a. *burning
 cash*). NimbusRun fixes that with **on-demand scaling** and cloud-friendly efficiency.
----
+
 
 ## Getting Started
 
-*Requirements*
+### Requirements
+Before you can unleash NimbusRun, make sure you have the following in place:
 
-- [Github organization](https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/creating-a-new-organization-from-scratch)
-- [Runner group for the organization](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)
-- either an AWS or GCP cloud account( or create a new implementation
-  for [Compute](autoscaler/compute/ComputeApi/src/main/java/com/nimbusrun/compute/Compute.java) and choose your own
-  compute engine :D )
-- [Github Token](https://github.com/settings/tokens)
-- [Knowledge of what github actions is](https://docs.github.com/en/actions)
+- A [GitHub organization](https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/creating-a-new-organization-from-scratch)
+- A [runner group for that organization](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)
+- An AWS or GCP account (or, if you’re adventurous, roll your own compute engine by extending [Compute.java](autoscaler/compute/ComputeApi/src/main/java/com/nimbusrun/compute/Compute.java) 😏)
+- A [GitHub token](https://github.com/settings/tokens) with the right permissions
+- At least a passing knowledge of [GitHub Actions](https://docs.github.com/en/actions)
 
-*Setup A Webhook*
-Follow along with the [official documentation](https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks)
+---
 
-* Configure A Github Action Workflow *
+### Step 1: Setup a Webhook
+Follow the [official documentation](https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks) to create a webhook.
+
+---
+
+### Step 2: Configure a GitHub Action Workflow
+
+Here’s a minimal example:
 
 ```yaml
 name: test
 on:
   push:
     branches:
-      - master #<------ or whatever branch that exists
+      - master # or any branch you like
 jobs:
   test:
     runs-on:
@@ -60,79 +65,63 @@ jobs:
       - name: test
         run: echo "test"
 ```
+Key details:
 
-You need to specify the runner group name for this field `runs-on.group`.
+- The runs-on.group field must match your runner group.
+- You must also add a action-group=<group-name> label that matches runs-on.group.
+- Specify which action pool the workflow should run on with action-pool=<pool-name>. This must match a pool defined in your config file.
 
-You have to specify the runner group name under the `labels` as
+If you’ve defined a default-pool, you can skip the action pool label. But honestly, it’s best practice to explicitly pick a pool (so you don’t wonder later why everything went to “default”).
 
-```yaml
-      ...
-      labels:
-        - action-group=prod
-```
+---
 
-The action-group label has to match the `runs-on.group` field
-
-You next need to specify which action pool you want this to run on. Ensure that the action-pool name matches an action
-pool name inside of your configuration file.
-
-```yaml
-      ...
-      labels:
-        - action-pool=pool-name-1
-```
-
-**Note**: You can skip adding an action pool name if you have a defaultPool setup. Its good practice to use an actual
-action-pool
-
-* Specify Autoscaler Configuration File *
-
-Create configuration file called `config.yaml`. Replace all of the empty configurations with the correct values.
+### Step 3: Create an Autoscaler Configuration File
+Create a config.yaml and fill in your values:
 
 ```yaml
 name: aws-1-autoscaler
 computeType: aws
-logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
+logLevel: "info" # info | warn | debug | verbose
 
 github:
-  groupName: "" # name of your runner group
-  organizationName: "" # name of your organization
-  token: "" # This is the github token with permissions to interact with github actions 
+  groupName: ""            # name of your runner group
+  organizationName: ""     # name of your organization
+  token: ""                # GitHub token with required permissions
 
 server:
   port: 8080
 
 compute:
   defaultSettings:
-    idleScaleDownInMinutes: 10 # This number should higher than 5 atleast. It takes a second for runner service to start
-    region: "" # i.e us-east-2
-    subnet: "" # subnet-id i.e subnet-1234
-    securityGroup: "" # security group id i.e sg-1234
+    idleScaleDownInMinutes: 10 # should be at least 5 (runners need a moment to start up)
+    region: ""                 # e.g. us-east-2
+    subnet: ""                 # subnet ID (e.g. subnet-1234)
+    securityGroup: ""          # security group ID (e.g. sg-1234)
     diskSettings:
-      type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
-      size: "20" # in gigs
-    instanceType: "" # i.e t3.medium
-    maxInstanceCount: 10 #
+      type: "gp3"              # gp3 | gp2 | io2 | io1 | st1
+      size: "20"               # disk size in GiB
+    instanceType: ""           # e.g. t3.medium
+    maxInstanceCount: 10
+
   defaultActionPool:
     name: default-pool
+
   actionPools:
     - name: pool-name-1
       instanceType: t3.medium
     - name: big-compute
       instanceType: c4.2xlarge
 ```
-
-We have three action pools specified. Their names are
-
+In this example, we’ve defined three action pools:
 - pool-name-1
 - big-compute
 - default-pool
 
-The default-pool is special in that if you don't specify an action pool name in your GitHub workflow it will attempt to
-assign it to the default action pool.
+The default-pool acts as a fallback if no pool is explicitly specified in your workflow.
 
-*Define Docker Compose*
+---
 
+### Step 4: Define Docker Compose
 ```yaml
 version: "3.9"
 
@@ -140,8 +129,8 @@ services:
   autoscaler:
     image: bourgeoisiehacker/autoscaler:latest
     environment:
-      AWS_ACCESS_KEY_ID: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
-      AWS_SECRET_ACCESS_KEY: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+      AWS_ACCESS_KEY_ID: <SETUP>         # or rely on IAM roles/instance profiles
+      AWS_SECRET_ACCESS_KEY: <SETUP>
       NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
       SERVER_PORT: "8080"
     ports:
@@ -155,34 +144,51 @@ services:
 networks:
   default:
     name: nimbus_run
+
 ```
-
-Now run docker compose. Make sure the config file you made is in the same directory as your compose file
-
+Now, run Docker Compose:
 ```bash
 docker compose -f compose.yaml up
+
 ```
+Make sure your config.yaml lives in the same directory as your compose file.
+---
 
-If you running this on a vm with a public ip address setup the webhook. Example `10.34.62.102:8080/webhook`. You have to
-specify `/webhook` at the end. Also make sure the content type you chosen is `application/json`. I have SSL verification
-turned off for demo purposes but, you should take the time to setup tls infront of either webhook or autoscaler. Choose
-`Send me everything` and select `workflow jobs` and `workflow runs` events.
-<p align="center">
-  <img src="images/setup-webhook.gif" width="1000" alt="NimbusRun Logo"/>
-</p>
+### Step 5: Setup the Webhook
+If you’re running on a VM with a public IP, configure your GitHub webhook to point at:
+```html
+http://<your-ip>:8080/webhook
+```
+Be sure to include /webhook at the end, set the content type to application/json, and select workflow jobs and workflow runs events. TLS is highly recommended in production — my demo turned off SSL, but you should definitely add HTTPS in front of the webhook or autoscaler.
 
-Now you can trigger a workflow job in your repository by pushing a change you should see an instance get made. You
-should see an instance be created and shortly be terminated.
+<p align="center"> <img src="images/setup-webhook.gif" width="1000" alt="NimbusRun Webhook Setup"/> </p>
 
-## 🌍 Required Environment Variable
+Once configured, push a commit to your repo. You should see a VM instance spin up, run the job, and then terminate — the full autoscaling magic at work.
 
-Nimbus Run requires the `NIMBUS_RUN_CONFIGURATION_FILE` environment variable. This variable tells the component where to
-find its configuration file. Without it, NimbusRun has no idea how to behave and is essentially just a dreamer floating
-in the cloud.
+---
+
+### 🌍 Required Environment Variable
+
+NimbusRun requires the environment variable:
+
+- `NIMBUS_RUN_CONFIGURATION_FILE` → the path to your configuration file.
+
+Without this, NimbusRun has no idea what to do. Think of it as NimbusRun’s GPS: without directions, it just wanders aimlessly in the cloud.
+
+--- 
 
 ## ⚙️ Configuration Properties
 
 **Note** You can override any value with an environment variable in `${ENVIRONMENT_VAR_NAME}` format
+
+Legend for `Required`:
+
+| Symbol | Meaning                                                       |
+|--------|---------------------------------------------------------------|
+| ✅      | property required                                             |
+| ❌      | property not required                                         |
+| ~      | property is required if not specified in the default settings |
+
 
 ### Main application configurations
 
@@ -279,13 +285,18 @@ property in the action pool.
 
 
 
-### 🧩 Examples
+### 🧩 Full Config Examples
 
 See the full YAML examples in the sections above for both **AWS** and **GCP** autoscalers.
 
+- [AWS](config_examples/config-aws.yaml) 
+- [GCP](config_examples/config-gcp.yaml) 
 ---
 
 
 ## Helm Chart
 [Head over to the helm charts directory to see the helm chart](helm/nimbus-run)
+
+---
+
 ⚡ **NimbusRun**: because idle VMs should not be your cloud provider’s side hustle.  

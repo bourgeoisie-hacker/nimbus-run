@@ -1,4 +1,4 @@
-name: build
+name: release
 
 on:
   workflow_dispatch:
@@ -64,13 +64,13 @@ jobs:
         id: tag_version
         run: echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
         working-directory: autoscaler
-#      - name: deploy docker container
-#        run: |
-#          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
-#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
-#          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-#          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
+      - name: deploy docker container
+        run: |
+          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
+          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
+          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
 
       - name: next version
         id: next_version
@@ -87,5 +87,5 @@ jobs:
         working-directory: helm/nimbus-run
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          file_pattern: "**/pom.xml"
+          file_pattern: "**/pom.xml **/Chart.yaml"
           commit_message: "Incrementing version to ${{steps.next_version.outputs.new_version }}[skip ci]"
