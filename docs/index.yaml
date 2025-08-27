@@ -2,23 +2,33 @@ apiVersion: v1
 entries:
   nimbus-run:
   - apiVersion: v2
-    appVersion: 0.2.12
-    created: "2025-08-27T19:48:14.394244275Z"
+    appVersion: 0.2.13
+    created: "2025-08-27T20:13:05.919974048Z"
     description: A Helm chart for Kubernetes
-    digest: 8f057f21d8dec8a5ac04e31fc35c5a3c9b1207b0bfbbcb7be93c8f834a50d945
+    digest: 062dc193da0ad28c02264c07a9bc7b165eb919dcc74ca9016b5c65a7cad59d1b
     name: nimbus-run
     type: application
     urls:
-    - nimbus-run-0.2.12.tgz
+    - https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/nimbus-run-0.2.13.tgz
+    version: 0.2.13
+  - apiVersion: v2
+    appVersion: 0.2.12
+    created: "2025-08-27T20:13:05.919532089Z"
+    description: A Helm chart for Kubernetes
+    digest: 33d7d986ebc20c319b824407d30079cc1cb61d3826392d0f5f8a73d42017bae6
+    name: nimbus-run
+    type: application
+    urls:
+    - https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/nimbus-run-0.2.12.tgz
     version: 0.2.12
   - apiVersion: v2
     appVersion: 0.2.11
-    created: "2025-08-27T19:48:14.393767624Z"
+    created: "2025-08-27T20:13:05.920473997Z"
     description: A Helm chart for Kubernetes
-    digest: 4d21bb4723f10ffb9a5de1afe31d70b50ce3735b698ad8e31e16b6c78904be25
+    digest: 63fa4d88c200f711ed4cb19c3a332ddfe50c1475b23b218f6099c2f51053fd57
     name: nimbus-run
     type: application
     urls:
-    - nimbus-run-0.2.11.tgz
+    - https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/helm/nimbus-run-0.2.11.tgz
     version: 0.2.11
-generated: "2025-08-27T19:48:14.393191956Z"
+generated: "2025-08-27T20:13:05.918941511Z"
