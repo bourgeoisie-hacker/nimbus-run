@@ -5,6 +5,25 @@
 </p>
 <!-- TOC start  -->
 
+<!-- TOC -->
+* [NimbusRun](#nimbusrun)
+  * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
+  * [Getting Started](#getting-started)
+    * [Requirements](#requirements)
+    * [Step 1: Setup a Webhook](#step-1-setup-a-webhook)
+    * [Step 2: Configure a GitHub Action Workflow](#step-2-configure-a-github-action-workflow)
+    * [Step 3: Create an Autoscaler Configuration File](#step-3-create-an-autoscaler-configuration-file)
+    * [Step 4: Define Docker Compose](#step-4-define-docker-compose)
+  * [Make sure your config.yaml lives in the same directory as your compose file.](#make-sure-your-configyaml-lives-in-the-same-directory-as-your-compose-file)
+    * [Step 5: Setup the Webhook](#step-5-setup-the-webhook)
+    * [🌍 Required Environment Variable](#-required-environment-variable)
+  * [⚙️ Configuration Properties](#-configuration-properties)
+    * [Main application configurations](#main-application-configurations)
+    * [AWS Compute Configurations](#aws-compute-configurations)
+    * [GCP Compute Configurations](#gcp-compute-configurations)
+    * [🧩 Full Config Examples](#-full-config-examples)
+  * [Helm Chart](#helm-chart)
+<!-- TOC -->
 ## 🚀 What is NimbusRun?
 
 NimbusRun is an **autoscaler for GitHub self-hosted runners** running on **VMs** (or technically *any compute backend if
