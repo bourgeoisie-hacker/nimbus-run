@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
       - name: release name
         id: release_name
         run: |
@@ -51,7 +53,7 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: "**/index.yaml"
-          commit_message: "Updating helm index.yaml  ${{steps.next_version.outputs.new_version }}[skip ci]"
+          commit_message: "Updating helm index.yaml  ${{steps.next_version.outputs.version }}[skip ci]"
 
   build-and-push:
     runs-on: ubuntu-latest
