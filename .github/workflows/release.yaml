@@ -44,13 +44,13 @@ jobs:
             See changes in this release.
           files: |
             nimbus-run-${{ steps.release_name.outputs.version }}.tgz
+      - name: Pull Remote Changes
+        run: git pull -r
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
           helm repo index . --merge docs/index.yaml
           mv index.yaml docs/
-      - name: Pull Remote Changes
-        run: git pull -r
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: "**/index.yaml"
