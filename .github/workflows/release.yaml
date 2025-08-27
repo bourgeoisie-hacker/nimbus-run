@@ -7,6 +7,30 @@ on:
 #      - master
 
 jobs:
+
+  deployPages:
+    needs:
+      - release
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: 'github-pages'
+          path: 'docs'
+          retention-days: '1'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+
   release:
     runs-on: ubuntu-latest
     outputs:
