@@ -52,9 +52,6 @@ jobs:
         run: |
           helm package helm/charts/nimbus-run
           helm repo index . --merge docs/index.yaml
-          ls nimbus-run-${{ steps.release_name.outputs.tag_version }}.tgz
-          echo "just ls"
-          ls
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
