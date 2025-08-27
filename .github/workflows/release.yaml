@@ -102,7 +102,6 @@ jobs:
           yq -i '.version = "${{steps.next_version.outputs.new_version }}"' Chart.yaml
           yq -i '.appVersion = "${{steps.next_version.outputs.new_version }}"' Chart.yaml
         working-directory: helm/nimbus-run
-      - name: update
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: "**/pom.xml **/Chart.yaml"
