@@ -1,9 +1,8 @@
 name: build
 
 on:
-  push:
-    tags:
-      - 'v*.*.*' # Triggers when a new tag starting with 'v' and following a semantic versioning pattern is pushed
+  workflow_dispatch:
+
 #    branches:
 #      - master
 
@@ -17,6 +16,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: release name
+        id: release_name
+        run: echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         id: create_release
@@ -24,10 +26,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }} # Uses the pushed tag name as the release tag
-          release_name: Release ${{ github.ref_name }} # Sets the release name
+          tag_name: ${{ steps.release_name.outputs.release_name }} # Uses the pushed tag name as the release tag
+          release_name: Release ${{ steps.release_name.outputs.release_name }} # Sets the release name
           body: | # Defines the release body/description
-            Automated release created from tag ${{ github.ref_name }}.
+            Automated release created from tag ${{ steps.release_name.outputs.release_name }}.
             See changes in this release.
           draft: false # Set to true to create a draft release
           prerelease: false # Set to true for a pre-release
