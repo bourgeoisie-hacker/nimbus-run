@@ -18,22 +18,39 @@ jobs:
         uses: actions/checkout@v4
       - name: release name
         id: release_name
-        run: echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+        run: |
+          echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+          echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
         working-directory: autoscaler
+      - name: package helm
+        run: |
+          helm package helm/charts/nimbus-run
+          helm repo index . --merge docs/index.yaml
+          
 
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.release_name.outputs.release_name }} # Uses the pushed tag name as the release tag
-          release_name: Release ${{ steps.release_name.outputs.release_name }} # Sets the release name
+          name: Release ${{ steps.release_name.outputs.release_name }} # Sets the release name
           body: | # Defines the release body/description
             Automated release created from tag ${{ steps.release_name.outputs.release_name }}.
             See changes in this release.
-          draft: false # Set to true to create a draft release
-          prerelease: false # Set to true for a pre-release
+          files: |
+            nimbus-run-${{ steps.release_name.outputs.version }}.tgz
+
+      - name: package helm
+        run: |
+          helm package helm/charts/nimbus-run
+          helm repo index . --merge docs/index.yaml
+          mv index.yaml docs/
+      - uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          file_pattern: "**/pom.xml **/Chart.yaml"
+          commit_message: "Updating helm index.yaml  ${{steps.next_version.outputs.new_version }}[skip ci]"
+
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -64,13 +81,13 @@ jobs:
         id: tag_version
         run: echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
         working-directory: autoscaler
-      - name: deploy docker container
-        run: |
-          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
-          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
-          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
+#      - name: deploy docker container
+#        run: |
+#          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
+#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
+#          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+#          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
 
       - name: next version
         id: next_version
@@ -85,6 +102,7 @@ jobs:
           yq -i '.version = "${{steps.next_version.outputs.new_version }}"' Chart.yaml
           yq -i '.appVersion = "${{steps.next_version.outputs.new_version }}"' Chart.yaml
         working-directory: helm/nimbus-run
+      - name: update
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: "**/pom.xml **/Chart.yaml"
