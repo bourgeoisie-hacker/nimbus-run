@@ -26,7 +26,9 @@ jobs:
         run: |
           helm package helm/charts/nimbus-run
           helm repo index . --merge docs/index.yaml
-          
+          ls nimbus-run-${{ steps.release_name.outputs.version }}.tgz
+          echo "just ls"
+          ls
 
       - name: Create GitHub Release
         id: create_release
@@ -48,7 +50,7 @@ jobs:
           mv index.yaml docs/
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          file_pattern: "**/pom.xml **/Chart.yaml"
+          file_pattern: "**/index.yaml"
           commit_message: "Updating helm index.yaml  ${{steps.next_version.outputs.new_version }}[skip ci]"
 
   build-and-push:
