@@ -12,7 +12,7 @@
     </parent>
     <groupId>com.nimbusrun</groupId>
     <artifactId>autoscaler</artifactId>
-    <version>0.2.15</version>
+    <version>0.2.16</version>
     <packaging>pom</packaging>
 
     <modules>
