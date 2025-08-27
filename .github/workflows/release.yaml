@@ -2,11 +2,15 @@ name: build
 
 on:
   push:
+    tags:
+      - 'v*.*.*' # Triggers when a new tag starting with 'v' and following a semantic versioning pattern is pushed
     branches:
       - master
 
 jobs:
   release:
+    permissions:
+      contents: write
     needs:
       - build-and-push
     runs-on: ubuntu-latest
