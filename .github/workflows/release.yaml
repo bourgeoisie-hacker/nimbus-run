@@ -6,6 +6,27 @@ on:
       - master
 
 jobs:
+  release:
+    needs:
+      - build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }} # Uses the pushed tag name as the release tag
+          release_name: Release ${{ github.ref_name }} # Sets the release name
+          body: | # Defines the release body/description
+            Automated release created from tag ${{ github.ref_name }}.
+            See changes in this release.
+          draft: false # Set to true to create a draft release
+          prerelease: false # Set to true for a pre-release
   build-and-push:
     runs-on: ubuntu-latest
     permissions:

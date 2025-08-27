@@ -1,7 +1,6 @@
 name: aws-1-autoscaler
 computeType: aws
 logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
-standalone: true # "default false". turns off kafka queue listener
 
 github:
   groupName: "prod"

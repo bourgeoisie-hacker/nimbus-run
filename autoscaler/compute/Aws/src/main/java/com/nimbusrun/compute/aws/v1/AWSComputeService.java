@@ -282,19 +282,18 @@ public class AWSComputeService extends Compute {
                 runRequest.keyName(actionPool.getKeyPairNameOpt().get());
             }
             // Create block device mapping for root volume with specified size and type
-            if (!Boolean.TRUE.equals(actionPool.getNvme())) {
-                int diskSize = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getSize).orElse(DEFAULT_DISK_SIZE);
-                String diskType = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getType).orElse(DEFAULT_DISK_TYPE);
-                BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
-                        .deviceName("/dev/sda1") // Root device name for Ubuntu
-                        .ebs(EbsBlockDevice.builder()
-                                .volumeSize(diskSize)
-                                .volumeType(VolumeType.fromValue(diskType))
-                                .deleteOnTermination(true)
-                                .build())
-                        .build();
-                runRequest.blockDeviceMappings(rootVolume);
-            }
+            int diskSize = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getSize).orElse(DEFAULT_DISK_SIZE);
+            String diskType = Optional.ofNullable(actionPool.getDiskSettings()).map(AwsConfig.DiskSettings::getType).orElse(DEFAULT_DISK_TYPE);
+            BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
+                    .deviceName("/dev/sda1") // Root device name for Ubuntu
+                    .ebs(EbsBlockDevice.builder()
+                            .volumeSize(diskSize)
+                            .volumeType(VolumeType.fromValue(diskType))
+                            .deleteOnTermination(true)
+                            .build())
+                    .build();
+            runRequest.blockDeviceMappings(rootVolume);
+
             log.info("Creating instance {} for action pool {} ",runnerName,actionPool.getName());
             // Launch the instance
             RunInstancesResponse response = ec2.runInstances(runRequest.build());

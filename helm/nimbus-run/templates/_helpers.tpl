@@ -41,55 +41,11 @@ Common labels
 {{ "nimbus-run-component: autoscaler"}}
 {{- end }}
 
-{{- define "webhook.labels" -}}
-{{- with .Values.webhook.deployment.labels }}
-{{ toYaml . }}
-{{- end }}
-{{- "application: nimbus-run"}}
-{{ "nimbus-run-component: webhook"}}
-{{- end }}
 
-{{- define "actionTracker.labels" -}}
-{{- with .Values.actionTracker.deployment.labels }}
-{{ toYaml . }}
-{{- end }}
-{{- "application: nimbus-run"}}
-{{ "nimbus-run-component: actionTracker"}}
-{{- end }}
-
-{{- define "kafka.labels" -}}
-{{- with .Values.kafka.deployment.labels }}
-{{ toYaml . }}
-{{- end }}
-{{- "application: nimbus-run"}}
-{{ "nimbus-run-component: kafka"}}
-{{- end }}
 
 {{- define "autoscale-pullpolicy"}}
     {{- if .Values.autoscaler.deployment.pullPolicy}}
     {{- .Values.autoscaler.deployment.pullPolicy}}
-    {{- else }}
-    {{- "Always"}}
-    {{- end }}
-{{- end }}
-{{- define "webhook-pullpolicy"}}
-    {{- if .Values.autoscaler.deployment.pullPolicy}}
-    {{- .Values.autoscaler.deployment.pullPolicy}}
-    {{- else }}
-    {{- "Always"}}
-    {{- end }}
-{{- end }}
-{{- define "actionTracker-pullpolicy"}}
-    {{- if .Values.autoscaler.deployment.pullPolicy}}
-    {{- .Values.autoscaler.deployment.pullPolicy}}
-    {{- else }}
-    {{- "Always"}}
-    {{- end }}
-{{- end }}
-
-{{- define "kafka-pullpolicy"}}
-    {{- if .Values.kafka.deployment.pullPolicy}}
-    {{- .Values.kafka.deployment.pullPolicy}}
     {{- else }}
     {{- "Always"}}
     {{- end }}
@@ -116,43 +72,8 @@ Common labels
     {{- "ClusterIP"}}
     {{- end }}
 {{- end }}
-{{- define "webhook-service-loadbalancer-port"}}
-    {{- if .Values.webhook.service.port}}
-    {{- .Values.webhook.service.port}}
-    {{- else }}
-    {{- "8080"}}
-    {{- end }}
-{{- end }}
-{{- define "actionTracker-service-loadbalancer-type"}}
-    {{- if .Values.actionTracker.service.type}}
-    {{- .Values.actionTracker.service.type}}
-    {{- else }}
-    {{- "ClusterIP"}}
-    {{- end }}
-{{- end }}
-{{- define "actionTracker-service-loadbalancer-port"}}
-    {{- if .Values.actionTracker.service.port}}
-    {{- .Values.actionTracker.service.port}}
-    {{- else }}
-    {{- "8080"}}
-    {{- end }}
-{{- end }}
 
-{{- define "kafka-service-loadbalancer-type"}}
-    {{- if .Values.kafka.service.type}}
-    {{- .Values.kafka.service.type}}
-    {{- else }}
-    {{- "ClusterIP"}}
-    {{- end }}
-{{- end }}
 
-{{- define "kafka-broker-url"}}
-{{- if .Values.kafka.brokerOverride}}
-{{- .Values.kafka.brokerOverride}}
-{{- else }}
-{{- include "kafka.fullname" . }}.{{.Release.Namespace}}.svc.cluster.local:{{.Values.kafka.deployment.ports.client.port}}
-{{- end }}
-{{- end }}
 
 
 

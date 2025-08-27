@@ -127,13 +127,13 @@ autoscaler:
     retryPolicy:
       # Maximum minutes a job may stay in “Queued” state before being retried
       # Once exceeded, the job is sent to the retry topic
-      maxJobInQueuedInMinutes: 6
+      maxJobInQueuedInMinutes:
 
       # Minimum minutes to wait between retry attempts for the same job
-      maxTimeBtwRetriesInMinutes: 6
+      maxTimeBtwRetriesInMinutes:
 
       # Maximum number of retry attempts per job
-      maxRetries: 3
+      maxRetries:
   # This is a springboot app. Any additional settings set here will be injected in the application.yaml file that is generated.
   additionalSettings: { }
   deployment:

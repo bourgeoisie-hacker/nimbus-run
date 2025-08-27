@@ -57,8 +57,23 @@ public class Autoscaler implements WebhookReceiver {
     private final ExecutorService processMessageThread;
     private final ExecutorService threadPerTasks;
     private final Cache<String, AtomicBoolean> runnerLastBusy;
+
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
     private final Cache<RunnerNameId, AtomicInteger> runnerIdDeleteCounter;
+    private final Cache<String, AtomicInteger> githubRunnerIdUpscaledCache;
+    /**
+     * When a burst of jobs arrives, the underlying compute engine (AWS, GCP, etc.)
+     * may not immediately report the total number of active instances. This race
+     * condition can temporarily allow more than the configured maximum number of
+     * instances to be created.
+     *
+     * To mitigate this, we use a short-lived cache that tracks the number of instances
+     * created per action pool. The cache ensures that provisioning never exceeds the
+     * maximum allowed size of the pool during its lifetime.
+     *
+     * In plain terms: the cache acts as a safeguard so we never provision more
+     * instances than the action pool’s maximum size.
+     */
     private final Cache<String, AtomicInteger> actionPoolUpScale;
 
     public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader, MetricsContainer metricsContainer) throws InterruptedException {
@@ -92,6 +107,10 @@ public class Autoscaler implements WebhookReceiver {
         this.actionPoolUpScale = Caffeine.newBuilder()
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofMinutes(1))
+                .build();
+        this.githubRunnerIdUpscaledCache = Caffeine.newBuilder()
+                .maximumSize(1_000_000)
+                .expireAfterWrite(Duration.ofHours(3))
                 .build();
     }
 
@@ -243,6 +262,10 @@ public class Autoscaler implements WebhookReceiver {
 
                 UpscaleRequest upscaleRequest;
                 while ((upscaleRequest = receivedRequests.poll(20, TimeUnit.SECONDS)) != null) {
+                    if(githubRunnerIdUpscaledCache.getIfPresent(upscaleRequest.getWorkflowJobId()) !=null){
+                        log.warn("Upscale event already happened for worflow job id: %s".formatted(upscaleRequest.getWorkflowJobId()));
+                        continue;
+                    }
                     if(upscaleRequest.getRetryCreateFailed() > MAX_CREATE_FAILURE_RETRIES || upscaleRequest.getRetryPoolFull() > MAX_CREATE_POOL_FULL_RETRIES){
                         log.info("Action pool %s not being expanded due to too many retries. pool full: %s and failed create: %s"
                                 .formatted(upscaleRequest.actionPool.getName(),upscaleRequest.getRetryPoolFull(), upscaleRequest.getRetryCreateFailed()));
@@ -269,6 +292,7 @@ public class Autoscaler implements WebhookReceiver {
                             boolean successful = compute.createCompute(finalPool);
                             if(successful){
                                 metricsContainer.instanceCreatedTotal(finalPool.getName(), true);
+                                githubRunnerIdUpscaledCache.put(finalUpscaleRequest.getWorkflowJobId(), new AtomicInteger(0));
                             }else{
                                 metricsContainer.instanceCreatedTotal(finalPool.getName(), false);
 
@@ -374,7 +398,7 @@ public class Autoscaler implements WebhookReceiver {
             }
             log.info("Received action pool request for {} and runner group: {}", actionPool.getName(), this.githubService.getRunnerGroupName());
 
-            return receivedRequests.add(new UpscaleRequest(actionPool));
+            return receivedRequests.add(new UpscaleRequest(actionPool, githubActionJob.getId()));
         }
         return false;
     }
@@ -420,8 +444,11 @@ public class Autoscaler implements WebhookReceiver {
         private int retryCreateFailed;
         @Getter
         private UpScaleReason upScaleReason;
+        @Getter
+        private final String workflowJobId;
         private final ActionPool actionPool;
-        public UpscaleRequest(ActionPool actionPool ){
+        public UpscaleRequest(ActionPool actionPool, String workflowJobId ){
+            this.workflowJobId = workflowJobId;
             this.retryPoolFull = 0;
             this.retryCreateFailed = 0;
             this.actionPool = actionPool;
