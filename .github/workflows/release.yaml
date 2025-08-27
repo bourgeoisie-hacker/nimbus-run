@@ -3,9 +3,6 @@ name: release
 on:
   workflow_dispatch:
 
-#    branches:
-#      - master
-
 jobs:
 
   deployPages:
@@ -62,24 +59,28 @@ jobs:
           java-version: '21'
           distribution: 'temurin' # Or other supported distributions like 'zulu', 'adopt', etc.
           cache: 'maven'
-#      - name: build
-#        run: |
-#          mvn install -Paws -DskipTests
-#          mvn install -Pgcp -DskipTests
-#        working-directory: autoscaler
+      - name: build
+        run: |
+          mvn install -Paws -DskipTests
+          mvn install -Pgcp -DskipTests
+        working-directory: autoscaler
       - name: Tag Version
         id: tag_version
         run: |
           echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
           echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
         working-directory: autoscaler
-#      - name: deploy docker container
-#        run: |
-#          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
-#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-#          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
-#          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
-#          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
+      - name: deploy docker container
+        run: |
+          docker build -t bourgeoisiehacker/autoscaler:latest -f Dockerfile .
+          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
+          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
+          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
+      - name: set helm chart version to current version
+        run: |
+          yq -i '.version = "${{steps.tag_version.outputs.tag_version}}"' Chart.yaml
+          yq -i '.appVersion = "${{steps.tag_version.outputs.tag_version}}"' Chart.yaml
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
