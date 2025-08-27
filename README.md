@@ -202,7 +202,7 @@ Legend for `Required`:
 | `retryPolicy.maxRetries`                 | ❌        | Maximum retry attempts for a single job.                                                                             | `3`                   | `3`           |
 | `github.groupName`                       | ✅        | GitHub runner group/environment name.                                                                                | `prod`                | -             |
 | `github.organizationName`                | ✅        | GitHub organization name.                                                                                            | `bourgeoisie-whacker` | -             |
-| `github.token`                           | ✅        | GitHub Token. Must allow: <br>• Create self-hosted runner tokens <br>• List org runners.                             | `${GITHUB_TOKEN}`     | -             |
+| `github.token`                           | ✅        | GitHub Token. Must allow: <br>• Create self-hosted runner tokens <br>• List org runners.  Do not use PAT.            | `${GITHUB_TOKEN}`     | -             |
 | `github.webhookSecret`                   | ❌        | Webhook secret to verify GitHub requests. Only required in standalone webhook mode.                                  | `test`                | -             |
 | `github.webhookId`                       | ❌        | Webhook ID used to re-deliver failed events. Must be string (otherwise risk of scientific notation).                 | `"565459826"`         | -             |
 | `github.replayFailedDeliverOnStartup`    | ❌        | If true, resends all failed webhook deliveries from **today** on startup (requires `webhookId`).                     | `true`                | false         |
