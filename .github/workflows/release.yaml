@@ -8,54 +8,6 @@ on:
 
 jobs:
   release:
-    permissions:
-      contents: write
-    needs:
-      - build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: '0'
-      - name: release name
-        id: release_name
-        run: |
-          echo "release_name=v${{ needs.build-and-push.outputs.release_version }}" >> $GITHUB_OUTPUT
-        working-directory: autoscaler
-      - name: package helm
-        run: |
-          helm package helm/charts/nimbus-run
-          helm repo index . --merge docs/index.yaml
-          ls nimbus-run-${{ needs.build-and-push.outputs.release_version }}.tgz
-          echo "just ls"
-          ls
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ steps.release_name.outputs.release_name }} # Uses the pushed tag name as the release tag
-          name: Release ${{ steps.release_name.outputs.release_name }} # Sets the release name
-          body: | # Defines the release body/description
-            Automated release created from tag ${{ steps.release_name.outputs.release_name }}.
-            See changes in this release.
-          files: |
-            nimbus-run-${{ needs.build-and-push.outputs.release_version }}.tgz
-      - name: Pull Remote Changes
-        run: git pull -r
-      - name: package helm
-        run: |
-          helm package helm/charts/nimbus-run
-          helm repo index . --merge docs/index.yaml --url https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/
-          mv index.yaml docs/
-      - uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          file_pattern: "**/index.yaml"
-          commit_message: "Updating helm index.yaml  ${{steps.next_version.outputs.version }}[skip ci]"
-
-  build-and-push:
     runs-on: ubuntu-latest
     outputs:
       release_version: ${{steps.tag_version.outputs.tag_version}}
@@ -85,7 +37,9 @@ jobs:
 #        working-directory: autoscaler
       - name: Tag Version
         id: tag_version
-        run: echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+        run: |
+          echo "tag_version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+          echo "release_name=v$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
         working-directory: autoscaler
 #      - name: deploy docker container
 #        run: |
@@ -94,7 +48,32 @@ jobs:
 #          docker tag bourgeoisiehacker/autoscaler:latest docker.io/bourgeoisiehacker/autoscaler:latest
 #          docker push  docker.io/bourgeoisiehacker/autoscaler:${{steps.tag_version.outputs.tag_version}}
 #          docker push  docker.io/bourgeoisiehacker/autoscaler:latest
-
+      - name: package helm
+        run: |
+          helm package helm/charts/nimbus-run
+          helm repo index . --merge docs/index.yaml
+          ls nimbus-run-${{ steps.release_name.outputs.tag_version }}.tgz
+          echo "just ls"
+          ls
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tag_version.outputs.release_name }} # Uses the pushed tag name as the release tag
+          name: Release ${{ steps.tag_version.outputs.release_name }} # Sets the release name
+          body: | # Defines the release body/description
+            Automated release created from tag ${{ steps.tag_version.outputs.release_name }}.
+            See changes in this release.
+          files: |
+            nimbus-run-${{steps.tag_version.outputs.tag_version}}.tgz
+      - name: Pull Remote Changes
+        run: git pull -r
+      - name: package helm
+        run: |
+          helm package helm/charts/nimbus-run
+          helm repo index . --merge docs/index.yaml --url https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/
+          mv index.yaml docs/
       - name: next version
         id: next_version
         run: |
@@ -110,5 +89,5 @@ jobs:
         working-directory: helm/charts/nimbus-run
       - uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          file_pattern: "**/pom.xml **/Chart.yaml"
+          file_pattern: "**/pom.xml **/Chart.yaml **/index.yaml"
           commit_message: "Incrementing version to ${{steps.next_version.outputs.new_version }}[skip ci]"
