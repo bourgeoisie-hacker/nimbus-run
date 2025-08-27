@@ -44,7 +44,10 @@ jobs:
             See changes in this release.
           files: |
             nimbus-run-${{ steps.release_name.outputs.version }}.tgz
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
