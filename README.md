@@ -8,6 +8,7 @@
 <!-- TOC -->
 * [NimbusRun](#nimbusrun)
   * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
+  * [Helm Chart](#helm-chart)
   * [Getting Started](#getting-started)
     * [Requirements](#requirements)
     * [Step 1: Setup a Webhook](#step-1-setup-a-webhook)
@@ -22,7 +23,6 @@
     * [AWS Compute Configurations](#aws-compute-configurations)
     * [GCP Compute Configurations](#gcp-compute-configurations)
     * [🧩 Full Config Examples](#-full-config-examples)
-  * [Helm Chart](#helm-chart)
 <!-- TOC -->
 ## 🚀 What is NimbusRun?
 
@@ -43,6 +43,10 @@ That’s where NimbusRun shines:
 
 Traditional VM-based runners usually mean a fixed number of servers sitting idle (a.k.a. *burning
 cash*). NimbusRun fixes that with **on-demand scaling** and cloud-friendly efficiency.
+
+
+## Helm Chart
+[Head over to the helm charts directory to see the helm chart](helm/charts)
 
 
 ## Getting Started
@@ -313,9 +317,6 @@ See the full YAML examples in the sections above for both **AWS** and **GCP** au
 ---
 
 
-## Helm Chart
-[Head over to the helm charts directory to see the helm chart](helm/nimbus-run)
 
----
 
 ⚡ **NimbusRun**: because idle VMs should not be your cloud provider’s side hustle.  
