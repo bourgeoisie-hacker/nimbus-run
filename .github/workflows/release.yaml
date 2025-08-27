@@ -101,7 +101,7 @@ jobs:
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
-          helm repo index . --merge docs/index.yaml --url https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/
+          helm repo index . --merge docs/index.yaml --url https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/${{ steps.tag_version.outputs.release_name }}/
           mv index.yaml docs/
       - name: next version
         id: next_version
