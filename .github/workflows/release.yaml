@@ -109,7 +109,9 @@ jobs:
           files: |
             nimbus-run-${{steps.tag_version.outputs.tag_version}}.tgz
       - name: Pull Remote Changes
-        run: git pull -r
+        run: |
+          git status
+          git pull -r
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
