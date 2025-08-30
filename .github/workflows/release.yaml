@@ -86,6 +86,10 @@ jobs:
         run: |
           helm package helm/charts/nimbus-run
           helm repo index . --merge docs/index.yaml
+      - name: Create and push tag
+        run: |
+          git tag -a ${{ steps.tag_version.outputs.release_name }} -m "Automated tag created on ${{ steps.tag_version.outputs.release_name }}"
+          git push origin ${{ steps.tag_version.outputs.release_name }}
       - name: Generate Changelog
         id: changelog
         uses: requarks/changelog-action@v1
