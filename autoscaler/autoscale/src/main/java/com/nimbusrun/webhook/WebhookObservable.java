@@ -33,6 +33,7 @@ public class WebhookObservable {
             try {
                 GithubActionJob gj;
                 while ((gj = this.githubActionJobs.poll(1, TimeUnit.MINUTES)) != null) {
+                    log.debug("Processing Github Action Workflow Job id: %s, run id: %s, status: %s, ");
                     for (WebhookReceiver receiver : context.getBeansOfType(WebhookReceiver.class).values()) {
                         try {
                             receiver.receive(gj);
@@ -54,8 +55,6 @@ public class WebhookObservable {
      */
     public void receive(String message) {
         try {
-            log.info("Received message: {}", message);
-
             // Parse the message as JSON
             JSONObject json = new JSONObject(message);
 
@@ -68,7 +67,7 @@ public class WebhookObservable {
                 log.warn("Received message is not a workflow job or workflow run event");
             }
         } catch (Exception e) {
-            Utils.excessiveErrorLog("Error processing Kafka message", e, log);
+            Utils.excessiveErrorLog("Error processing message", e, log);
         }
     }
 }
