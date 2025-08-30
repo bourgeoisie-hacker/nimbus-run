@@ -81,6 +81,7 @@ jobs:
         run: |
           yq -i '.version = "${{steps.tag_version.outputs.tag_version}}"' Chart.yaml
           yq -i '.appVersion = "${{steps.tag_version.outputs.tag_version}}"' Chart.yaml
+        working-directory: helm/charts/nimbus-run
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
