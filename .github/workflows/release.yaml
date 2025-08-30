@@ -110,8 +110,9 @@ jobs:
             nimbus-run-${{steps.tag_version.outputs.tag_version}}.tgz
       - name: Pull Remote Changes
         run: |
-          git status
+          git stash
           git pull -r
+          git stash pop
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
