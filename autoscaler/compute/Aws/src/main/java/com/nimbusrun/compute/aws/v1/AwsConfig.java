@@ -43,7 +43,11 @@ public class AwsConfig {
         for(var actionPool : this.actionPools){
             fillInActionPoolWithDefaults(actionPool, this.defaultSettings);
         }
-        fillInActionPoolWithDefaults(this.defaultActionPool, this.defaultSettings);
+        if(this.defaultActionPool != null) {
+            fillInActionPoolWithDefaults(this.defaultActionPool, this.defaultSettings);
+            this.defaultActionPool.setDefault(true);
+        }
+
 
     }
     private void fillInActionPoolWithDefaults(ActionPool actionPool, ActionPool defaults) {
@@ -57,6 +61,7 @@ public class AwsConfig {
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
         setFromDefault(actionPool::getKeyPairName, defaults::getKeyPairName, actionPool::setKeyPairName);
+
     }
 
     private <T> void setFromDefault(Supplier<T> action, Supplier<T> defaultAction, Consumer<T> setActionFromDefault) {

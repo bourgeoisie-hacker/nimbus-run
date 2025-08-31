@@ -9,12 +9,6 @@ public class ActionPool  {
     private final Integer maxInstances;
     private final Integer instanceIdleScaleDownTimeInMinutes;
     private final boolean isDefault;
-    public ActionPool(String name, Integer maxInstances, Integer instanceIdleScaleDownTimeInMinutes) {
-        this.name = name;
-        this.maxInstances = maxInstances;
-        this.instanceIdleScaleDownTimeInMinutes = instanceIdleScaleDownTimeInMinutes;
-        this.isDefault = false;
-    }
     public ActionPool(String name, Integer maxInstances, Integer instanceIdleScaleDownTimeInMinutes, boolean isDefault) {
         this.name = name;
         this.maxInstances = maxInstances;

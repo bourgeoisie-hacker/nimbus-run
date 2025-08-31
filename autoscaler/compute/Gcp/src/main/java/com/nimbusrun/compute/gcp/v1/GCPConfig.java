@@ -21,7 +21,10 @@ public class GCPConfig {
         for(var actionPool : this.actionPools){
             fillInActionPoolWithDefaults(actionPool, this.defaultSettings);
         }
-        fillInActionPoolWithDefaults(this.defaultActionPool, this.defaultSettings);
+        if(this.defaultActionPool != null) {
+            this.defaultActionPool.setDefault(true);
+            fillInActionPoolWithDefaults(this.defaultActionPool, this.defaultSettings);
+        }
 
     }
     private void fillInActionPoolWithDefaults(ActionPool actionPool, ActionPool defaults) {
@@ -39,6 +42,7 @@ public class GCPConfig {
         setFromDefault(actionPool::getMaxInstanceCount, defaults::getMaxInstanceCount, actionPool::setMaxInstanceCount);
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
+
     }
 
     private <T> void setFromDefault(Supplier<T> action, Supplier<T> defaultAction, Consumer<T> setActionFromDefault) {
@@ -107,7 +111,7 @@ public class GCPConfig {
         private boolean isDefault;
 
         public com.nimbusrun.compute.ActionPool toAutoScalerActionPool() {
-            return new com.nimbusrun.compute.ActionPool(this.name, this.maxInstanceCount, this.idleScaleDownInMinutes);
+            return new com.nimbusrun.compute.ActionPool(this.name, this.maxInstanceCount, this.idleScaleDownInMinutes, isDefault);
         }
 
 
