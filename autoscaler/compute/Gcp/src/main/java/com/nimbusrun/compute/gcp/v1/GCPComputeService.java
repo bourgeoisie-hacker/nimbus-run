@@ -379,7 +379,7 @@ public class GCPComputeService extends Compute {
             }
             if(actionPool.getServiceAccountPathOpt().isEmpty()){
                 warnings.add("Action Pool %s missing serviceAccountPath. Using environment default credentials");
-            }else if(Files.notExists(Paths.get(actionPool.getServiceAccountPath())) || Files.isRegularFile(Paths.get(actionPool.getServiceAccountPath()))){
+            }else if(Files.notExists(Paths.get(actionPool.getServiceAccountPath())) || !Files.isRegularFile(Paths.get(actionPool.getServiceAccountPath()))){
                 errors.add("Action Pool %s serviceAccountPath file at \"%s\" does not exist or is not a regular file".formatted(name, actionPool.getServiceAccountPath()));
             }
             if(actionPool.getSubnet() == null){

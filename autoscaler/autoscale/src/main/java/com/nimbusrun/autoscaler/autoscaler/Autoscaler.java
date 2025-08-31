@@ -457,7 +457,7 @@ public class Autoscaler implements WebhookReceiver {
             return this;
         }
         public UpscaleRequest retryCreateFailed(){
-            upScaleReason = UpScaleReason.RETRY_POOL_FULL;
+            upScaleReason = UpScaleReason.RETRY_FAILED_CREATE;
             this.retryCreateFailed += 1;
             return this;
         }

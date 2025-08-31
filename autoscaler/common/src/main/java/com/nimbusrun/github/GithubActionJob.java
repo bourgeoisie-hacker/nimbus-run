@@ -23,13 +23,15 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
     private final Long startedAt;
     private final Long completedAt;
     private final String runUrl;
+    private final String runHtmlUrl;
+
     private final List<String> labels;
     private final String actionPoolName;
     private final String actionGroupName;
     private final String repositoryFullName;
     private final String jsonStr;
 
-    public GithubActionJob(String id, String runId, WorkflowJobStatus status, String htmlUrl, String name, String conclusion, Long startedAt, Long completedAt, String runUrl, List<String> labels, String actionPoolName, String actionGroupName, String repositoryFullName, String jsonStr) {
+    public GithubActionJob(String id, String runId, WorkflowJobStatus status, String htmlUrl, String name, String conclusion, Long startedAt, Long completedAt, String runUrl, String runHtmlUrl, List<String> labels, String actionPoolName, String actionGroupName, String repositoryFullName, String jsonStr) {
         this.id = id;
         this.runId = runId;
         this.status = status;
@@ -39,6 +41,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         this.startedAt = startedAt;
         this.completedAt = completedAt;
         this.runUrl = runUrl;
+        this.runHtmlUrl = runHtmlUrl;
         this.labels = labels;
         this.actionPoolName = actionPoolName;
         this.actionGroupName = actionGroupName;
@@ -90,6 +93,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         }).orElse(null);
         String repositoryName = repoGetStr.apply("full_name");
         String runUrl = job.getString("run_url");
+        String runHtmlUrl = job.getString("html_url");
         JSONArray labels = job.getJSONArray("labels");
         List<String> labelList = new ArrayList<>();
         for(int i = 0; i < labels.length(); i++){
@@ -102,6 +106,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
                 .withHtmlUrl(htmlUrl).withName(name).withConclusion(conclusion).withStartedAt(startedAt)
                 .withCompletedAt(completedAt)
                 .withRunUrl(runUrl)
+                .withRunHtmlUrl(runHtmlUrl)
                 .withLabels(labelList)
                 .withActionGroupName(actionGroupName)
                 .withActionPoolName(actionPoolName)
@@ -141,7 +146,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
     }
 
     public String simpleDescription(){
-        return "id: %s, run_id: %s, repository_name: %s, run_url: %s".formatted(this.id, this.runId, this.repositoryFullName, this.runUrl);
+        return "id: %s, run_id: %s, repository_name: %s, run_html_url: %s".formatted(this.id, this.runId, this.repositoryFullName, this.runHtmlUrl);
     }
     public String getId() {
         return id;
@@ -183,6 +188,10 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         return runUrl;
     }
 
+    public String getRunHtmlUrl() {
+        return runHtmlUrl;
+    }
+
     public List<String> getLabels() {
         return labels;
     }
@@ -210,6 +219,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         private Long startedAt;
         private Long completedAt;
         private String runUrl;
+        private String runHtmlUrl;
         private List<String> labels;
         private String actionPoolName;
         private String actionGroupName;
@@ -268,6 +278,11 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
             return this;
         }
 
+        public GithubActionJobBuilder withRunHtmlUrl(String runHtmlUrl) {
+            this.runHtmlUrl = runHtmlUrl;
+            return this;
+        }
+
         public GithubActionJobBuilder withLabels(List<String> labels) {
             this.labels = labels;
             return this;
@@ -294,7 +309,7 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         }
 
         public GithubActionJob build() {
-            return new GithubActionJob(id, runId, status, htmlUrl, name, conclusion, startedAt, completedAt, runUrl, labels, actionPoolName, actionGroupName, repositoryFullName, jsonStr);
+            return new GithubActionJob(id, runId, status, htmlUrl, name, conclusion, startedAt, completedAt, runUrl, runHtmlUrl, labels, actionPoolName, actionGroupName, repositoryFullName, jsonStr);
         }
     }
 }
