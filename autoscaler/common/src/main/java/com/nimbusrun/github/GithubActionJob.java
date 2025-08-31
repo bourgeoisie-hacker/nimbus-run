@@ -105,7 +105,8 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
                 .withLabels(labelList)
                 .withActionGroupName(actionGroupName)
                 .withActionPoolName(actionPoolName)
-                .withJsonStr(object.toString()).build();
+                .withJsonStr(object.toString())
+                .withRepositoryFullName(repositoryName).build();
     }
 
     public static Optional<String> findActionGroup(String label, String expectedKey){
@@ -139,6 +140,9 @@ public class GithubActionJob implements Comparable<GithubActionJob>{
         return this.id.compareTo(o.getId());
     }
 
+    public String simpleDescription(){
+        return "id: %s, run_id: %s, repository_name: %s, run_url: %s".formatted(this.id, this.runId, this.repositoryFullName, this.runUrl);
+    }
     public String getId() {
         return id;
     }

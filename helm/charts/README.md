@@ -2,6 +2,18 @@
 
 Deploy **NimbusRun Autoscaler** on Kubernetes using Helm. This chart provisions everything needed to run the autoscaler and connect it to your GitHub organization and cloud compute backend.  
 
+## How Best to Deploy
+
+While you can deploy this chart as-is, the recommended approach is to deploy it as a sub-chart or alongside another chart that manages your networking components. This allows you to properly configure ingress, load balancers, and secrets.
+
+**Key considerations:**
+
+1. **Networking** – Ensure you configure an ingress and/or load balancer that only accepts requests from valid sources. This provides a secure entry point to your autoscaler service.
+2. **Secrets Management** – Sensitive values such as GitHub tokens, AWS credential keys, and GCP service accounts should **never** be stored directly in configuration files. Instead, use a secrets management tool such as [External Secrets](https://external-secrets.io/latest/) or [Helm Secrets](https://github.com/jkroepke/helm-secrets) to manage and mount these values securely. Once mounted, the autoscaler pod can reference them safely.
+
+This chart is intentionally **unopinionated**, giving you the flexibility to integrate it into your existing infrastructure and security practices.
+
+
 # 🚀 Setup Helm for NimbusRun
 
 ### 1. Add the Helm Repository

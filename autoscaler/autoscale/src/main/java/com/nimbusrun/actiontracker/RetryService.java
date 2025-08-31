@@ -30,9 +30,9 @@ public class RetryService implements WebhookReceiver {
     private static Integer MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT = 7;
     private static Integer MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT = 7;
     private static Integer MAX_RETRY_ATTEMPTS_DEFAULT = 3;
-    private Map<String, WorkflowJobWatcher> workflowJobWatcherMap = new ConcurrentHashMap<>();
-    private BlockingDeque<GithubActionJob> jobQueue = new LinkedBlockingDeque<>();
-    private Map<String, RetryTracker> retryTrackerMap = new ConcurrentHashMap<>();
+    private final Map<String, WorkflowJobWatcher> workflowJobWatcherMap = new ConcurrentHashMap<>();
+    private final BlockingDeque<GithubActionJob> jobQueue = new LinkedBlockingDeque<>();
+    private final Map<String, RetryTracker> retryTrackerMap = new ConcurrentHashMap<>();
     private final ExecutorService mainThread;
     private final ScheduledExecutorService runUpdateWatcher;
     private final String actionGroupName;
@@ -90,7 +90,7 @@ public class RetryService implements WebhookReceiver {
                             if(minutesSinceStart > this.maxJobInQueuedInMinutes && (latestTime.isEmpty() || shouldRetry(latestTime.get(), retryTracker.getRetryTimes().size()))){{
                                 //Because I don't want github api to be everywhere if we can avoid it we should instead
                                 // have the autoscaler check whether or not a job should be retried. Action Tracker will just be dumb
-                                log.info("Retrying {}", opt.get().getJsonStr().replace(" ", ""));
+                                log.info("Attempting to retrying Github Job {}", opt.get().simpleDescription());
                                 autoscaler.receiveRetry(opt.get());
                                 retryTracker.getRetryTimes().add(System.currentTimeMillis());
                             }}
@@ -113,11 +113,8 @@ public class RetryService implements WebhookReceiver {
     public boolean shouldRetry(long lastRetry, long retryAttempts){
         Instant lastAttempt = Instant.ofEpochMilli(lastRetry);
         Instant now = Instant.now();
-        int elaspedTime = Duration.between(lastAttempt, now).toMinutesPart();
-        if(elaspedTime > this.maxTimeBtwRetriesInMinutes && retryAttempts > this.maxRetries){
-            return true;
-        }
-        return false;
+        int elapsedTime = Duration.between(lastAttempt, now).toMinutesPart();
+        return elapsedTime > this.maxTimeBtwRetriesInMinutes && retryAttempts > this.maxRetries;
     }
 
     public boolean receive(GithubActionJob gj){

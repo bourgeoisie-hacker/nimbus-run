@@ -23,6 +23,10 @@ public class MetricsContainer {
     public static String INSTANCE_OPERATIONS_TOTAL = "instance_operations_total";
     public static String INSTANCE_COUNT = "instance_count";
     public static String INSTANCE_CREATE_RETRIES = "instance_create_retries_total";
+    /*TODO
+        - counter user trigger a workflow_run
+        - counter repository triggering workflow_run
+     */
     private final MeterRegistry meterRegistry;
     private final Map<String, AtomicInteger> actionPoolGaugeMap = new ConcurrentHashMap<>();
     public MetricsContainer(MeterRegistry meterRegistry){

@@ -33,7 +33,9 @@ public class WebhookObservable {
             try {
                 GithubActionJob gj;
                 while ((gj = this.githubActionJobs.poll(1, TimeUnit.MINUTES)) != null) {
-                    log.debug("Processing Github Action Workflow Job id: %s, run id: %s, status: %s, ");
+                    log.debug("Evaluating Github Action Workflow Job for further processing id: %s, run id: %s, status: %s, repository name: %s , run_url: %s"
+                            .formatted(gj.getId(), gj.getRunId(), gj.getStatus().getStatus(),
+                                    gj.getRepositoryFullName(), gj.getRunUrl()));
                     for (WebhookReceiver receiver : context.getBeansOfType(WebhookReceiver.class).values()) {
                         try {
                             receiver.receive(gj);

@@ -32,8 +32,9 @@ case "$COMPUTE_TYPE" in
     TYPE=gcp
     ;;
   azure)
-    echo "✅ computeType is Azure"
+    echo "✅ computeType is Azure... unfortunately this hasn't been implemented :("
     TYPE=azure
+    exit 1
     ;;
   *)
     echo "❌ Unknown computeType: '$COMPUTE_TYPE'"

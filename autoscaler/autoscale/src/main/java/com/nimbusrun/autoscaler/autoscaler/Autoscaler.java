@@ -87,7 +87,7 @@ public class Autoscaler implements WebhookReceiver {
         this.actionPoolMap = populateActionPoolMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
         this.scheduledExecutorService.scheduleWithFixedDelay(this::handleComputeAndRunners,1,30, TimeUnit.SECONDS);
-        var sc =this.scheduledExecutorService.scheduleWithFixedDelay(this::updateInstanceCountGauge,1,30, TimeUnit.SECONDS);
+        this.scheduledExecutorService.scheduleWithFixedDelay(this::updateInstanceCountGauge,1,30, TimeUnit.SECONDS);
         this.processMessageThread.execute(this::processMessage);
         this.processMessageThread.execute(this::processRetryMessage);
         this.processMessageThread.execute(this::scheduleRetry);
@@ -243,7 +243,6 @@ public class Autoscaler implements WebhookReceiver {
 
     private synchronized void processRetryMessage(){
         while(true){
-            log.debug("running retry");
             try{
                 GithubActionJob gj;
                 while((gj = this.receivedRetryRequests.poll(1,TimeUnit.MINUTES)) != null){
@@ -396,7 +395,7 @@ public class Autoscaler implements WebhookReceiver {
                 log.warn("No action pool specified for workflow and no default action pool configured: {}", githubActionJob.getJsonStr());
                 return false;
             }
-            log.info("Received action pool request for {} and runner group: {}", actionPool.getName(), this.githubService.getRunnerGroupName());
+            log.info("Received action pool request for {} and runner group: {}, run_url: {}", actionPool.getName(), this.githubService.getRunnerGroupName(), githubActionJob.getRunUrl());
 
             return receivedRequests.add(new UpscaleRequest(actionPool, githubActionJob.getId()));
         }
@@ -407,10 +406,8 @@ public class Autoscaler implements WebhookReceiver {
 
     public enum UpScaleReason {
         NEW_REQUEST, RETRY_POOL_FULL, RETRY_FAILED_CREATE;
-
-
     }
-    public static record Pause<T>(Instant instant, T object){
+    public record Pause<T>(Instant instant, T object){
 
 
     }
