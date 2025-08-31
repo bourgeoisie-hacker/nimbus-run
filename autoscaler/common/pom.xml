@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>0.2.29</version>
+        <version>0.2.30</version>
     </parent>
 
     <artifactId>common</artifactId>
