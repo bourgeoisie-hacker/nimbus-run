@@ -110,8 +110,16 @@ jobs:
             nimbus-run-${{steps.tag_version.outputs.tag_version}}.tgz
       - name: Pull Remote Changes
         run: |
-          git status
-          git pull -r
+          if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Changes detected. Stashing..."
+            git stash
+            git pull -r
+            git stash pop
+          else
+            echo "No changes detected. Nothing to stash."
+            git pull -r
+          fi
+
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
