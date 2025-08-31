@@ -27,7 +27,7 @@ public class TestPayload {
     }
 
     public static void sendPayload(String filePath) throws IOException {
-        String payload = Files.readString(Paths.get("webhooks-examples/test-workflow-job-queued.json"));
+        String payload = Files.readString(Paths.get("webhook-examples-mine/retry.json"));
 //        String payload = Files.readString(Paths.get(filePath));
         try(var client = createHttpClient()){
             org.apache.hc.core5.http.io.entity.StringEntity entity = new StringEntity(payload);

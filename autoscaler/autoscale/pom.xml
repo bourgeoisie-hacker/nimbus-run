@@ -117,9 +117,7 @@
     <profiles>
         <profile>
             <id>aws</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
+
             <dependencies>
                 <dependency>
                     <groupId>com.nimbusrun</groupId>
@@ -132,6 +130,9 @@
             </build>
         </profile>
         <profile>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <id>gcp</id>
             <dependencies>
                 <dependency>

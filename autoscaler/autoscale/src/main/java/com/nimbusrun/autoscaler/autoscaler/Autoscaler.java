@@ -387,7 +387,7 @@ public class Autoscaler implements WebhookReceiver {
         if(githubActionJob.getActionGroupName().isPresent() && githubActionJob.getActionGroupName().get().equalsIgnoreCase(this.githubService.getRunnerGroupName())){
             isForGroup = true;
         }
-        if(githubActionJob.getActionPoolName().isPresent() && actionPoolMap.containsKey(githubActionJob.getActionPoolName().get())) {
+        if(githubActionJob.getActionPoolName().isPresent()) {
             actionPool = actionPoolMap.getOrDefault(githubActionJob.getActionPoolName().get(), defaultActionPool.orElse(null));
         }
         if (isForGroup) {
