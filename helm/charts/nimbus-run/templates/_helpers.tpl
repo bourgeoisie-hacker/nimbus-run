@@ -42,15 +42,6 @@ Common labels
 {{- end }}
 
 
-
-{{- define "autoscale-pullpolicy"}}
-    {{- if .Values.autoscaler.deployment.pullPolicy}}
-    {{- .Values.autoscaler.deployment.pullPolicy}}
-    {{- else }}
-    {{- "Always"}}
-    {{- end }}
-{{- end }}
-
 {{- define "autoscaler-service-loadbalancer-type"}}
     {{- if .Values.autoscaler.service.type}}
     {{- .Values.autoscaler.service.type}}

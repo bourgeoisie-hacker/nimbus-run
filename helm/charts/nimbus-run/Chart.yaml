@@ -1,6 +1,6 @@
 apiVersion: v2
 name: nimbus-run
-description: "NimbusRun is an autoscaler for GitHub self-hosted runners that run on VMs \n(AWS, GCP, or your own compute engine). Unlike Kubernetes-only solutions, \nNimbusRun brings the same elastic scaling to VM-based runners — including \nscale-to-zero support to save you from paying the \"cloud idle tax.\"  \n\nFeatures:\n  - Dynamic autoscaling of GitHub Actions runners\n  - Support for AWS, GCP, or pluggable compute backends\n  - Scale-to-zero for cost efficiency\n  - Retry logic for stuck jobs\n  - Deployable via Helm for easy Kubernetes integration\n\nIn short: less idle compute, more efficient builds, and fewer surprises \non your cloud bill.\n"
+description: "NimbusRun is an autoscaler for GitHub self-hosted runners that run on virtual machines (AWS, GCP, or your own compute engine). Unlike Kubernetes-only solutions, it brings elastic scaling to VM-based runners, including full scale-to-zero support to eliminate the “cloud idle tax.” With features such as dynamic autoscaling of GitHub Actions runners, support for multiple cloud providers or pluggable backends, retry logic for stuck jobs, and simple deployment via Helm, NimbusRun helps reduce idle compute, improve build efficiency, and prevent unexpected costs on your cloud bill."
 # A chart can be either an 'application' or a 'library' chart.
 #
 # Application charts are a collection of templates that can be packaged into versioned archives

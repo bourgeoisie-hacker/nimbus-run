@@ -137,6 +137,7 @@ autoscaler:
   # This is a springboot app. Any additional settings set here will be injected in the application.yaml file that is generated.
   additionalSettings: { }
   deployment:
+    pullPolicy: Always
     image: bourgeoisiehacker/autoscaler:latest
     labels: { }
     nodeSelector: { }

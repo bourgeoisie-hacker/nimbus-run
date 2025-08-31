@@ -85,7 +85,6 @@ jobs:
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run
-          helm repo index . --merge docs/index.yaml
       - name: Create and push tag
         uses: rickstaa/action-create-tag@v1
         with:
@@ -119,7 +118,6 @@ jobs:
             echo "No changes detected. Nothing to stash."
             git pull -r
           fi
-
       - name: package helm
         run: |
           helm package helm/charts/nimbus-run

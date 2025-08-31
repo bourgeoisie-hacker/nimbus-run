@@ -22,7 +22,9 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: {{.Values.autoscaler.deployment.image }}
-          imagePullPolicy: {{ include "autoscale-pullpolicy" .}}
+          {{- if .Values.autoscaler.deployment.pullPolicy}}
+          imagePullPolicy: {{ .Values.autoscaler.deployment.pullPolicy}}
+          {{- end }}
           ports:
             - name: {{ .Values.autoscaler.deployment.ports.http.portName }}
               containerPort: {{ .Values.autoscaler.deployment.ports.http.port }}
