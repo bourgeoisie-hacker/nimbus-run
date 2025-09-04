@@ -70,8 +70,24 @@ public abstract class Compute {
 
         return "github-runner-"+hex;
     }
+    public String startUpScript(String runnerToken, String runnerGroup, ActionPool actionPool, String runnerName, String organization, ProcessorArchitecture architecture, OperatingSystemFamily operatingSystemFamily) {
+        if(operatingSystemFamily == OperatingSystemFamily.UBUNTU){
+            return startUpScriptUbuntu(runnerToken, runnerGroup, actionPool, runnerName, organization, architecture);
+        }else if (operatingSystemFamily == OperatingSystemFamily.DEBIAN){
+            return startUpScriptDebian(runnerToken, runnerGroup, actionPool, runnerName, organization, architecture);
+        }
+        throw new RuntimeException("Unsupported selected");
+    }
 
-    public String startUpScript(String runnerToken, String runnerGroup, ActionPool actionPool, String runnerName, String organization) {
+    public String startUpScriptUbuntu(String runnerToken, String runnerGroup, ActionPool actionPool, String runnerName, String organization, ProcessorArchitecture architecture) {
+        String archStr = "";
+        if(ProcessorArchitecture.X64 == architecture){
+            archStr = "x64";
+        } else if(ProcessorArchitecture.ARM64 == architecture){
+            archStr = "arm64";
+        }else {
+            throw new RuntimeException("%s is not supported processor architecture".formatted(architecture));
+        }
         createRunnerLabels(actionPool, runnerGroup);
         Map<String, String> env = new HashMap<>();
         env.put("RUNNER_GROUP", runnerGroup);
@@ -79,7 +95,7 @@ public abstract class Compute {
         env.put("RUNNER_NAME", runnerName);
         env.put("ORGANIZATION", organization);
         env.put("RUNNER_LABELS", createRunnerLabels(actionPool,runnerGroup));
-        env.put("ACTION_RUNNER_URL", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-x64\")) | .browser_download_url')");
+        env.put("ACTION_RUNNER_URL", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-%s\")) | .browser_download_url')".formatted(archStr));
         return """
                 #!/bin/bash
                 export RUNNER_GROUP=${RUNNER_GROUP}
@@ -129,7 +145,78 @@ public abstract class Compute {
                 .replace("${RUNNER_NAME}", runnerName )
                 .replace("${ORGANIZATION}", organization)
                 .replace("${RUNNER_LABELS}", createRunnerLabels(actionPool,runnerGroup))
-                .replace("${ACTION_RUNNER_URL}", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-x64\")) | .browser_download_url')");
+                .replace("${ACTION_RUNNER_URL}", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-%s\")) | .browser_download_url')".formatted(archStr));
+    }
+
+    public String startUpScriptDebian(String runnerToken, String runnerGroup, ActionPool actionPool, String runnerName, String organization, ProcessorArchitecture architecture) {
+        String archStr;
+        if(ProcessorArchitecture.X64 == architecture){
+            archStr = "x64";
+        } else if(ProcessorArchitecture.ARM64 == architecture){
+            archStr = "arm64";
+        }else {
+            throw new RuntimeException("%s is not supported processor architecture".formatted(architecture));
+        }
+        createRunnerLabels(actionPool, runnerGroup);
+        Map<String, String> env = new HashMap<>();
+        env.put("RUNNER_GROUP", runnerGroup);
+        env.put("RUNNER_TOKEN", runnerToken);
+        env.put("RUNNER_NAME", runnerName);
+        env.put("ORGANIZATION", organization);
+        env.put("RUNNER_LABELS", createRunnerLabels(actionPool,runnerGroup));
+        env.put("ACTION_RUNNER_URL", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-%s\")) | .browser_download_url')".formatted(archStr));
+        return """
+                #!/bin/bash
+                export RUNNER_GROUP=${RUNNER_GROUP}
+                export RUNNER_LABELS=${RUNNER_LABELS}
+                export RUNNER_TOKEN=${RUNNER_TOKEN}
+                export RUNNER_NAME=${RUNNER_NAME}
+                export ORGANIZATION=${ORGANIZATION}
+                export USER_AGENT=action-runner
+                
+                # Install Docker
+                apt update && sudo apt upgrade -y
+                apt install ca-certificates curl gnupg lsb-release -y
+                install -m 0755 -d /etc/apt/keyrings
+                curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                echo \\
+                  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \\
+                  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \\
+                  tee /etc/apt/sources.list.d/docker.list > /dev/null
+                apt update
+                apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+                
+                useradd -ms /bin/bash $USER_AGENT
+                sudo adduser $USER_AGENT sudo
+                echo "$USER_AGENT ALL=(ALL) NOPASSWD: ALL" >>  /etc/sudoers
+                
+                #Add $USER_AGENT user to docker group
+                usermod -aG docker $USER_AGENT && newgrp docker
+                service docker start
+                
+                sudo -i -u $USER_AGENT bash << EOF
+                mkdir /home/$USER_AGENT/actions-runner
+                cd /home/$USER_AGENT/actions-runner
+                curl -o actions-runner.tar.gz -L ${ACTION_RUNNER_URL}
+                tar xzf ./actions-runner.tar.gz
+                EOF
+                
+                cd /home/$USER_AGENT/actions-runner
+                /home/$USER_AGENT/actions-runner/bin/installdependencies.sh
+                echo 'setting up config'
+                sudo -i -u $USER_AGENT bash << EOF
+                cd /home/$USER_AGENT/actions-runner
+                ./config.sh --ephemeral --url https://github.com/$ORGANIZATION --token $RUNNER_TOKEN --runnergroup $RUNNER_GROUP --name $RUNNER_NAME --labels $RUNNER_LABELS --unattended
+                EOF
+                ./svc.sh install $USER_AGENT
+                ./svc.sh start
+                """
+                .replace("${RUNNER_GROUP}", runnerGroup)
+                .replace("${RUNNER_TOKEN}", runnerToken)
+                .replace("${RUNNER_NAME}", runnerName )
+                .replace("${ORGANIZATION}", organization)
+                .replace("${RUNNER_LABELS}", createRunnerLabels(actionPool,runnerGroup))
+                .replace("${ACTION_RUNNER_URL}", "$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.assets[] | select(.name | startswith(\"actions-runner-linux-%s\")) | .browser_download_url')".formatted(archStr));
     }
 
 

@@ -124,11 +124,21 @@ public class AutoscalerTest {
         when(job.getActionPoolName()).thenReturn(Optional.of("non-existent-pool"));
         when(githubService.getRunnerGroupName()).thenReturn("test-group");
 
+        // Override the setup to make defaultActionPool empty
+        java.lang.reflect.Field field;
+        try {
+            field = Autoscaler.class.getDeclaredField("defaultActionPool");
+            field.setAccessible(true);
+            field.set(autoscaler, Optional.empty());
+        } catch (Exception e) {
+            fail("Failed to set defaultActionPool to empty: " + e.getMessage());
+        }
+
         // Act
         boolean result = autoscaler.receive(job);
 
         // Assert
-        assertTrue(result); // Should still return true because it falls back to default pool
+        assertFalse(result); // Should return false because there's no action pool and no default pool
     }
 
     @Test
@@ -159,8 +169,13 @@ public class AutoscalerTest {
 
         when(githubService.listRunnersInGroup()).thenReturn(runners);
 
-        Map<String, ListInstanceResponse> instanceResponses = new HashMap<>();
-        when(compute.listAllComputeInstances()).thenReturn(instanceResponses);
+        // Create a proper mock for ListInstanceResponse
+        ListInstanceResponse response = mock(ListInstanceResponse.class);
+        List<ListInstanceResponse.Instance> instances = new ArrayList<>();
+        when(response.instances()).thenReturn(instances);
+
+        // Mock the listComputeInstances method which is actually called in scaleDownInstance
+        when(compute.listComputeInstances(any(ActionPool.class))).thenReturn(response);
 
         // Use reflection to access private method
         java.lang.reflect.Method method = Autoscaler.class.getDeclaredMethod("handleComputeAndRunners");
@@ -171,8 +186,8 @@ public class AutoscalerTest {
 
         // Assert
         verify(githubService).listRunnersInGroup();
-        // Verify that updateRunnerInfo was called with the runners
-        // This is difficult to verify directly since it's a private method
+        // Verify that the compute.listComputeInstances method was called with any ActionPool
+        verify(compute).listComputeInstances(any(ActionPool.class));
     }
 
     @Test
@@ -205,12 +220,13 @@ public class AutoscalerTest {
         when(githubService.isReplayFailedDeliverOnStartup()).thenReturn(true);
         when(githubService.getWebhookId()).thenReturn("webhook-123");
 
+        // Create a delivery record with only the necessary mocks
         List<DeliveryRecord> deliveries = new ArrayList<>();
         DeliveryRecord failedDelivery = mock(DeliveryRecord.class);
         when(failedDelivery.getGuid()).thenReturn("guid-123");
         when(failedDelivery.getId()).thenReturn("delivery-123");
         when(failedDelivery.getStatusCode()).thenReturn(500); // Failed delivery
-        when(failedDelivery.getDeliveredAt()).thenReturn(ZonedDateTime.now());
+        // We don't need to mock getDeliveredAt since we only have one delivery record
         deliveries.add(failedDelivery);
 
         when(githubService.listDeliveries()).thenReturn(deliveries);

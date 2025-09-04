@@ -8,5 +8,8 @@ public class Constants {
     public static final String ACTION_POOL_LABEL_KEY = "action-pool";
     public static final String ACTION_GROUP_LABEL_KEY = "action-group";
 
+    public static final String UBUNTU_FAMILY = "ubuntu";
+    public static final String DEBIAN_FAMILY = "debian";
+
 
 }

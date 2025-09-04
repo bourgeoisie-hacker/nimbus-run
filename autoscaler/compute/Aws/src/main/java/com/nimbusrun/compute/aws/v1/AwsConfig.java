@@ -1,18 +1,27 @@
 package com.nimbusrun.compute.aws.v1;
 
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.nimbusrun.Utils;
+import com.nimbusrun.compute.ProcessorArchitecture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.introspector.PropertyUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 
 public class AwsConfig {
+    private static Logger log = LoggerFactory.getLogger(AwsConfig.class);
     private static final String TYPE = "type";
     private static final String REGION = "region";
     private static final String SUBNET = "subnet";
@@ -61,6 +70,8 @@ public class AwsConfig {
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
         setFromDefault(actionPool::getIdleScaleDownInMinutes, defaults::getIdleScaleDownInMinutes, actionPool::setIdleScaleDownInMinutes);
         setFromDefault(actionPool::getKeyPairName, defaults::getKeyPairName, actionPool::setKeyPairName);
+        setFromDefault(actionPool::getOs, defaults::getOs, actionPool::setOs);
+        setFromDefault(actionPool::getArchitecture, defaults::getArchitecture, actionPool::setArchitecture);
 
     }
 
@@ -72,15 +83,25 @@ public class AwsConfig {
 
     public static AwsConfig createAwsConfig(String computeConfig){
 
-        PropertyUtils propertyUtils = new PropertyUtils();
-        propertyUtils.setSkipMissingProperties(true);
-        Constructor constructor = new Constructor(AwsConfig.class,new LoaderOptions() );
-        constructor.setPropertyUtils(propertyUtils);
-        Yaml yaml = new Yaml(constructor);
-
-        AwsConfig awsConfig = yaml.load(computeConfig);
-        awsConfig.fillInActionPoolWithDefaults();
-        return awsConfig;
+        Map<String, Object> yamlData;
+        try {
+            Yaml yaml = new Yaml();
+            yamlData = yaml.load(computeConfig);
+        }catch (Exception e){
+            Utils.excessiveErrorLog("Failed to convert compute section of yaml into json due to %s".formatted(e.getMessage()), e, log);
+            throw e;
+        }
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            String jsonString = objectMapper.writeValueAsString(yamlData);
+            AwsConfig awsConfig = objectMapper.readValue(jsonString, AwsConfig.class);
+            awsConfig.fillInActionPoolWithDefaults();
+            return awsConfig;
+        } catch (Exception e){
+            Utils.excessiveErrorLog("Failed to parse configuration due to %s".formatted(e.getMessage()),e, log);
+            throw new RuntimeException(e);
+        }
     }
 
     public static class DiskSettings {
@@ -115,6 +136,10 @@ public class AwsConfig {
         private String securityGroup;
         private DiskSettings diskSettings;
         private boolean isDefault;
+        @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
+        private ProcessorArchitecture architecture;
+        @JsonDeserialize(using = AwsOperatingSystem.Deserialize.class)
+        private AwsOperatingSystem os;
         private String keyPairName;
 
         public com.nimbusrun.compute.ActionPool toAutoScalerActionPool() {
@@ -223,6 +248,22 @@ public class AwsConfig {
 
         public void setKeyPairName(String keyPairName) {
             this.keyPairName = keyPairName;
+        }
+
+        public ProcessorArchitecture getArchitecture() {
+            return architecture;
+        }
+
+        public void setArchitecture(ProcessorArchitecture architecture) {
+            this.architecture = architecture;
+        }
+
+        public AwsOperatingSystem getOs() {
+            return os;
+        }
+
+        public void setOs(AwsOperatingSystem os) {
+            this.os = os;
         }
     }
 

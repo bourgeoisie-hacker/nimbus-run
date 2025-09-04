@@ -1,6 +1,9 @@
 package com.nimbusrun.actiontracker;
 
 import com.nimbusrun.autoscaler.autoscaler.Autoscaler;
+import com.nimbusrun.autoscaler.autoscaler.ValidWorkFlowJob;
+import com.nimbusrun.compute.ActionPool;
+import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.WorkflowJobStatus;
 import com.nimbusrun.webhook.WebhookReceiver;
@@ -40,11 +43,12 @@ public class RetryService implements WebhookReceiver {
     private final Integer maxTimeBtwRetriesInMinutes;
     private final Integer maxRetries;
     private final Autoscaler autoscaler;
+    private final Map<String, ActionPool> actionPoolMap;
 
     public RetryService(Autoscaler autoscaler, @Value("${github.groupName}") String actionGroupName,
                         @Value("${retryPolicy.maxJobInQueuedInMinutes:#{null}}") Integer maxJobInQueuedInMinutes,
                         @Value("${retryPolicy.maxTimeBtwRetriesInMinutes:#{null}}") Integer maxTimeBtwRetriesInMinutes,
-                        @Value("${retryPolicy.maxRetries:#{null}}") Integer maxRetries){
+                        @Value("${retryPolicy.maxRetries:#{null}}") Integer maxRetries, ConfigReader configReader){
         this.autoscaler = autoscaler;
         this.maxJobInQueuedInMinutes = Optional.ofNullable(maxJobInQueuedInMinutes).orElse(MAX_JOB_IN_QUEUED_IN_MINUTES_DEFAULT);
         this.maxTimeBtwRetriesInMinutes = Optional.ofNullable(maxTimeBtwRetriesInMinutes).orElse(MAX_TIME_BTW_RETRIES_IN_MINUTES_DEFAULT);
@@ -55,15 +59,16 @@ public class RetryService implements WebhookReceiver {
 
         mainThread.execute(this::runUpdateWatcher);
         runUpdateWatcher.scheduleWithFixedDelay(this::checkRetryStatus, 30, 20 ,TimeUnit.SECONDS);
-
+        this.actionPoolMap = configReader.getActionPoolMap();
     }
 
     public void runUpdateWatcher(){
             while (true) {
                 try{
                     GithubActionJob gj;
-                    while((gj = this.jobQueue.poll(3, TimeUnit.SECONDS)) != null){
-                        if(gj.getActionGroupName().isEmpty() || !gj.getActionGroupName().get().equalsIgnoreCase(this.actionGroupName)){
+                    while((gj = this.jobQueue.poll(20, TimeUnit.SECONDS)) != null){
+                        ValidWorkFlowJob vf = new ValidWorkFlowJob(gj, actionPoolMap, actionGroupName);
+                        if(vf.isInvalid()){
                             continue;
                         }
                         GithubActionJob finalGj = gj;
@@ -87,13 +92,11 @@ public class RetryService implements WebhookReceiver {
                             long minutesSinceStart = TimeUnit.MILLISECONDS.toMinutes(System.currentTimeMillis() - opt.get().getStartedAt());
                             RetryTracker retryTracker = retryTrackerMap.computeIfAbsent(w.getJobId(), (key)-> new RetryTracker(w.getJobId(),w.getRunId()));
                             Optional<Long> latestTime = retryTracker.getRetryTimes().stream().max(Comparator.comparingLong(i->i));
-                            if(minutesSinceStart > this.maxJobInQueuedInMinutes && (latestTime.isEmpty() || shouldRetry(latestTime.get(), retryTracker.getRetryTimes().size()))){{
-                                //Because I don't want github api to be everywhere if we can avoid it we should instead
-                                // have the autoscaler check whether or not a job should be retried. Action Tracker will just be dumb
+                            if(minutesSinceStart > this.maxJobInQueuedInMinutes && (latestTime.isEmpty() || shouldRetry(latestTime.get(), retryTracker.getRetryTimes().size()))){
                                 log.info("Attempting to retrying Github Job {}", opt.get().simpleDescription());
                                 autoscaler.receiveRetry(opt.get());
                                 retryTracker.getRetryTimes().add(System.currentTimeMillis());
-                            }}
+                            }
 
                         }
                     }catch (Exception e){

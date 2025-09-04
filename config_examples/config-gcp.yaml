@@ -91,6 +91,11 @@ compute:
     # Maximum number of instances (0 = no limit)
     maxInstanceCount: 10
 
+    # The operating system to be used. See compatibility matrix to see supported version
+    os: ubuntu22.04
+
+    # The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.
+    architecture: x64
   # Default action pool (inherits all fields from defaultSettings)
   defaultActionPool:
     name: default-pool

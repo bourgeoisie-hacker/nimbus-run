@@ -15,6 +15,12 @@ compute:
       # AWS security group ID for instance firewall rules
       securityGroup:
 
+      # The operating system to be used. See compatibility matrix to see supported version
+      os:
+
+      # The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.
+      architecture:
+
       # AWS Credentials Profile to used. This will look for the aws credential file at the default location or if you specify the AWS_SHARED_CREDENTIALS_FILE.
       # If you don't specify this value then it will use the DefaultCredential provider to obtain credentials.
       # Please see default credentials provider chain
@@ -87,6 +93,12 @@ compute:
 
       # Maximum number of instances (0 = no limit)
       maxInstanceCount:
+
+      # The operating system to be used. See compatibility matrix to see supported version
+      os:
+
+      # The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.
+      architecture:
 
     # Default action pool (inherits all fields from defaultSettings)
     defaultActionPool:

@@ -16,14 +16,16 @@ import org.apache.http.entity.ContentType;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class TestPayload {
     public static void main(String[] args) throws IOException {
-        sendPayload("alh");
+        sendPayloads("webhook-examples-mine/sends/aws/os");
     }
 
     public static void sendPayload(String filePath) throws IOException {
@@ -37,6 +39,25 @@ public class TestPayload {
             System.out.println(response.getCode());
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
+        }
+
+    }
+    public static void sendPayloads(String filePath) throws IOException {
+        try(Stream<Path> pathStream = Files.walk(Paths.get(filePath)).filter(Files::isRegularFile)){
+            List<Path> paths = pathStream.toList();
+            for( Path p : paths) {
+                String payload = Files.readString(p);
+//        String payload = Files.readString(Paths.get(filePath));
+                try (var client = createHttpClient()) {
+                    org.apache.hc.core5.http.io.entity.StringEntity entity = new StringEntity(payload);
+                    var post = new HttpPost("http://localhost:8080/webhook");
+                    post.setEntity(entity);
+                    var response = client.execute(post);
+                    System.out.println(response.getCode());
+                } catch (GeneralSecurityException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         }
 
     }

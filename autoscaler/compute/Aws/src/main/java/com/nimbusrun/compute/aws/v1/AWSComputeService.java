@@ -10,15 +10,13 @@ import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.Utils;
+import com.nimbusrun.compute.ProcessorArchitecture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.ec2.Ec2ClientBuilder;
 import software.amazon.awssdk.services.ec2.model.*;
 
 import java.time.Duration;
@@ -37,11 +35,13 @@ public class AWSComputeService extends Compute {
     private final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
     private final String APPLICATION_NAME_LABEL_KEY = "NimbusRun";
     private Map<String, Ec2Client> actionPoolToEc2Client = new HashMap<>();
-    private final Cache<Region, String> regionUbuntuAmiCache;
+    private final Cache<AwsConfig.ActionPool, String> amiCache;
+    private static final ProcessorArchitecture DEFAULT_PROCESSOR_ARCHITECTURE = ProcessorArchitecture.X64;
+    private static final AwsOperatingSystem DEFAULT_OPERATING_SYSTEM = AwsOperatingSystem.UBUNTU_24_04;
     //    private String applicationName;
     public AWSComputeService(GithubApi githubService) {
         this.githubService = githubService;
-        regionUbuntuAmiCache = Caffeine.newBuilder()
+        amiCache = Caffeine.newBuilder()
                 .maximumSize(1_000_000)
                 .expireAfterWrite(Duration.ofHours(24))
                 .build();
@@ -200,6 +200,14 @@ public class AWSComputeService extends Compute {
             if (actionPool.getIdleScaleDownInMinutes() == null) {
                 warnings.add("Action Pool %s not configured with idleScaleDownInMinutes. Please add to defaultSettings or on Action Pool".formatted(name));
             }
+            if(actionPool.getOs() != null && actionPool.getOs() == AwsOperatingSystem.UNKNOWN){
+                errors.add("Invalid operating system specified for action pool %s".formatted(name));
+            }else if(actionPool.getOs() != null && actionPool.getOs() != AwsOperatingSystem.UNKNOWN && !actionPool.getOs().isAvailable()){
+                errors.add("Operating system %s specified for action pool %s is not available as a Runner".formatted(actionPool.getOs().getOperatingSystem().getShortName(),name));
+            }
+            if(actionPool.getArchitecture() != null && actionPool.getArchitecture() == ProcessorArchitecture.UNKNOWN){
+                errors.add("Invalid cpu architecture specified for action pool %s".formatted(name));
+            }
         }
     }
 
@@ -231,10 +239,11 @@ public class AWSComputeService extends Compute {
         Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
 
         try {
-
+            ProcessorArchitecture architecture = Optional.ofNullable(actionPool.getArchitecture()).orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
+            AwsOperatingSystem os = Optional.ofNullable(actionPool.getOs()).orElse(DEFAULT_OPERATING_SYSTEM);
             Region region = regionFromString(actionPool.getRegion()).get();
             // Set up instance parameters
-            String amiId = regionUbuntuAmiCache.get(region, (r)->latestAmi(ec2).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
+            String amiId = amiCache.get(actionPool, (r)->latestAmi(ec2, actionPool.getName(),architecture, os).orElse(null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
             if(amiId == null){
                 log.error("Ubuntu AMI does not exist for region {}", actionPool.getRegion());
                 return false;
@@ -245,15 +254,16 @@ public class AWSComputeService extends Compute {
                 log.error("Failed to retrieve github runner token");
                 return false;
             }
-            String runnerName = this.createInstanceName();
+            String instanceName = this.createInstanceName();
 
             // Generate the startup script
-            String startupScript = startUpScript(
+            String startupScript = startUpScriptUbuntu(
                     runnerToken.get(),
                     githubService.getRunnerGroupName(),
                     autoScalerActionPool,
-                    runnerName,
-                    githubService.getOrganization()
+                    instanceName,
+                    githubService.getOrganization(),
+                    ProcessorArchitecture.X64
             );
 
             // Encode the startup script in Base64
@@ -274,7 +284,7 @@ public class AWSComputeService extends Compute {
                     .tagSpecifications(
                             TagSpecification.builder()
                                     .resourceType(ResourceType.INSTANCE)
-                                    .tags(generateInstanceTags(actionPool.getName(), runnerName))
+                                    .tags(generateInstanceTags(actionPool.getName(), instanceName))
                                     .build()
                     );
 
@@ -294,9 +304,11 @@ public class AWSComputeService extends Compute {
                     .build();
             runRequest.blockDeviceMappings(rootVolume);
 
-            log.info("Creating instance {} for action pool {} ",runnerName,actionPool.getName());
+            log.info("Creating instance {} for action pool {} ",instanceName,actionPool.getName());
             // Launch the instance
             RunInstancesResponse response = ec2.runInstances(runRequest.build());
+            log.info("Instance created : %s".formatted( instanceName));
+
             return true;
         }catch (Exception e){
             Utils.excessiveErrorLog("Failed to create instance %s".formatted(e.getMessage()), e, log);
@@ -308,14 +320,25 @@ public class AWSComputeService extends Compute {
     public Optional<Region> regionFromString(String region){
         return Region.regions().stream().filter(r->r.id().equalsIgnoreCase(region)).findAny();
     }
-    public Optional<String> latestAmi(Ec2Client ec2Client){
-        try  {
+    public static String determineArch(ProcessorArchitecture architecture){
+        String type = "x86_64";
+        if(architecture.getType().equalsIgnoreCase("arm64")){
+            type = "arm64";
+        }
+        return type;
+    }
+    public static Optional<String> latestAmi(Ec2Client ec2Client, String actionPoolName, ProcessorArchitecture architecture, AwsOperatingSystem os) {
+        try {
             DescribeImagesRequest request = DescribeImagesRequest.builder()
-                    .owners("099720109477") // Canonical's owner ID. Company managing the images.
+                    .owners(os.gcpProviderProject()) // Canonical's owner ID. Company managing the images.
                     .filters(
                             Filter.builder()
                                     .name("name")
-                                    .values("ubuntu/images/hvm-ssd/ubuntu-*-amd64-server-*") // Adjust for specific Ubuntu version if needed
+                                    .values(os.createRegex()) // Adjust for specific Ubuntu version if needed
+                                    .build(),
+                            Filter.builder()
+                                    .name("architecture")
+                                    .values(determineArch(architecture))
                                     .build(),
                             Filter.builder()
                                     .name("state")
@@ -325,7 +348,6 @@ public class AWSComputeService extends Compute {
                     .build();
 
             List<Image> imagesUn = ec2Client.describeImages(request).images();
-
             // Sort images by creation date in descending order to get the latest
             List<Image> images = imagesUn.stream()
                     .sorted(Comparator.comparing(Image::creationDate).reversed())
@@ -333,16 +355,16 @@ public class AWSComputeService extends Compute {
 
             if (!images.isEmpty()) {
                 String latestAmiId = images.get(0).imageId();
-                log.debug("Latest Ubuntu AMI ID: " + latestAmiId);
+                log.info("Found ami %s for action pool %s".formatted(latestAmiId, actionPoolName));
                 return Optional.of(latestAmiId);
             } else {
-               log.warn("No Ubuntu AMIs found matching the criteria.");
+                log.warn("No Ubuntu AMIs found matching the criteria for action pool %s.".formatted(actionPoolName));
+
             }
         } catch (Exception e) {
-            Utils.excessiveErrorLog("Error finding latest Ubuntu AMI due to %s".formatted(e.getMessage()), e, log);
+            Utils.excessiveErrorLog("Error finding latest Ubuntu AMI for action pool %s due to %s".formatted(actionPoolName,e.getMessage()), e, log);
 
         }
         return Optional.empty();
     }
-
 }

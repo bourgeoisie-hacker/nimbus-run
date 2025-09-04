@@ -88,6 +88,11 @@ compute:
     # Name of the EC2 key pair to inject for SSH access
     keyPairName: Testers
 
+    # The operating system to be used. See compatibility matrix to see supported version
+    os: ubuntu22.04
+
+    # The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.
+    architecture: x64
   # Default action pool placeholder (inherits from defaultSettings)
   defaultActionPool:
     name: default-pool

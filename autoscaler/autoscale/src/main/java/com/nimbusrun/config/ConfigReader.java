@@ -53,8 +53,13 @@ public class ConfigReader {
                 log.error("missing %s configuration".formatted(COMPUTE_KEY));
                 System.exit(1);
             }
-
-            ComputeConfigResponse response = compute.receiveComputeConfigs((Map<String, Object>) baseConfig1.getCompute(), baseConfig1.getName());
+            ComputeConfigResponse response = null;
+            try {
+                response = compute.receiveComputeConfigs((Map<String, Object>) baseConfig1.getCompute(), baseConfig1.getName());
+            }catch (Exception e){
+                Utils.excessiveErrorLog("Failed to process compute configs", e, log);
+                System.exit(1);
+            }
             if( response.warrnings() != null && !response.warrnings().isEmpty()){
                 response.warrnings().forEach(e-> log.warn("Compute configuration warning: {}", e));
             }

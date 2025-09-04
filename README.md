@@ -3,7 +3,6 @@
 <p align="center">
   <img src="images/nimbusrun.png" width="400" alt="NimbusRun Logo"/>
 </p>
-<!-- TOC start  -->
 
 <!-- TOC -->
 * [NimbusRun](#nimbusrun)
@@ -23,7 +22,12 @@
     * [AWS Compute Configurations](#aws-compute-configurations)
     * [GCP Compute Configurations](#gcp-compute-configurations)
     * [🧩 Full Config Examples](#-full-config-examples)
+  * [Metrics](#metrics)
+  * [Supported Operating Systems Compatibility Matrix](#supported-operating-systems-compatibility-matrix)
+  * [Supported CPU Architecture](#supported-cpu-architecture)
 <!-- TOC -->
+
+
 ## 🚀 What is NimbusRun?
 
 NimbusRun is an **autoscaler for GitHub self-hosted runners** running on **VMs** (or technically *any compute backend if
@@ -245,9 +249,11 @@ Legend for `Required`:
 | `compute.defaultSettings.diskSettings.type`      | ❌        | Disk type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`.                                                                                                                     | `gp3`                  | `gp3`          |
 | `compute.defaultSettings.diskSettings.size`      | ❌        | Disk size in GiB.                                                                                                                                                            | `20`                   | `20`           |
 | `compute.defaultSettings.instanceType`           | ~        | Instance type for runners.                                                                                                                                                   | `t3.medium`            | -              |
+| `compute.defaultSettings.os`                     | ❌        | The operating system to be used. See compatibility matrix to see supported version                                                                                           | `ubuntu20.04`          | `ubuntu20.04`  |
+| `compute.defaultSettings.architecture`           | ❌        | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.                                                             | `x64`                  | `x64`          |
 | `compute.defaultSettings.maxInstanceCount`       | ❌        | Maximum instance count (0 = unlimited).                                                                                                                                      | `10`                   | `10`           |
 | `compute.defaultSettings.keyPairName`            | ❌        | EC2 key pair name for SSH access.                                                                                                                                            | `my-keypair`           | -              |
-| `compute.defaultActionPool`                      | ❌        | This is one instance of an action pool. If a github workflow doesn't specif                                                                                                  | `default-pool`         | `default-pool` |
+| `compute.defaultActionPool`                      | ❌        | This is one instance of an action pool. If a github workflow doesn't specify an action-pool                                                                                  | `default-pool`         | `default-pool` |
 | `compute.actionPools`                            | ❌        | List of aws action pools                                                                                                                                                     | `c4.2xlarge`           |                |
 
 *AWS action pool configurations*
@@ -259,10 +265,12 @@ Legend for `Required`:
 | `region`                 | ~        | AWS region for provisioning.                                                                                                                                                 | `us-east-1`            | `us-east-1`            |
 | `subnet`                 | ~        | AWS subnet ID.                                                                                                                                                               | `subnet-257dbf7d`      | `subnet-257dbf7d`      |
 | `securityGroup`          | ~        | AWS security group ID.                                                                                                                                                       | `sg-0189c3298c7be64ca` | `sg-0189c3298c7be64ca` |
-| `credentialsProfile`     | ~        | AWS credentials profile to use. Defaults to the [AWS SDK default credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). | `my-profile`           |                        |
-| `diskSettings.type`      | ~        | Disk type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`.                                                                                                                     | `gp3`                  | `gp3`                  |
-| `diskSettings.size`      | ~        | Disk size in GiB.                                                                                                                                                            | `20`                   | `20`                   |
+| `credentialsProfile`     | ❌        | AWS credentials profile to use. Defaults to the [AWS SDK default credentials chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). | `my-profile`           |                        |
+| `diskSettings.type`      | ❌        | Disk type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`.                                                                                                                     | `gp3`                  | `gp3`                  |
+| `diskSettings.size`      | ❌        | Disk size in GiB.                                                                                                                                                            | `20`                   | `20`                   |
 | `instanceType`           | ~        | Instance type for runners.                                                                                                                                                   | `t3.medium`            | `t3.medium`            |
+| `os`                     | ❌        | The operating system to be used. See compatibility matrix to see supported version                                                                                           | `ubuntu20.04`          | `ubuntu20.04`          |
+| `architecture`           | ❌        | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.                                                             | `x64`                  | `x64`                  |
 | `maxInstanceCount`       | ~        | Maximum instance count (0 = unlimited).                                                                                                                                      | `10`                   | `10`                   |
 | `keyPairName`            | ~        | EC2 key pair name for SSH access.                                                                                                                                            | `Testers`              | `Testers`              |
 
@@ -270,42 +278,45 @@ Legend for `Required`:
 
 *Default Configuration*
 
-| Name                                               | Required | Description                                                                                         | Example                                  | Default |
-|----------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------|------------------------------------------|---------|
+| Name                                           | Required | Description                                                                                         | Example                                  | Default |
+|------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------|------------------------------------------|---------|
 | **compute.defaultSettings.idleScaleDownInMinutes** | ❌        | Minutes of inactivity before scaling down an instance (accounts for boot + runner warmup).          | `10`                                     | `10`    |
-| **compute.defaultSettings.projectId**              | ~        | GCP project identifier for provisioning resources.                                                  | `massive-fasdf-342018`                   | -       |
-| **compute.defaultSettings.region**                 | ~        | GCP region for provisioning instances.                                                              | `us-east1`                               | -       |
-| **compute.defaultSettings.subnet**                 | ~        | Full path to GCP subnet for networking.                                                             | `regions/us-east1/subnetworks/default`   | -       |
-| **compute.defaultSettings.vpc**                    | ~        | Full path to GCP VPC for networking.                                                                | `global/networks/default`                | -       |
-| **compute.defaultSettings.zones**                  | ~        | List of zones for instance placement (load balanced across zones).                                  | `us-east1-b`, `us-east1-c`, `us-east1-d` | -       |
-| **compute.defaultSettings.serviceAccountPath**     | ~        | Path to service account JSON for authenticating to GCP APIs. If unset, uses default provider chain. | `/path/to/service-account-file.json`     | -       |
-| **compute.defaultSettings.diskSettings.size**      | ❌        | Disk size in GiB.                                                                                   | `20`                                     | `20`    |
-| **compute.defaultSettings.instanceType**           | ~        | GCE machine type for GitHub runners.                                                                | `e2-highcpu-4`                           | -       |
-| **compute.defaultSettings.maxInstanceCount**       | ❌        | Maximum number of instances (0 = unlimited).                                                        | `10`                                     | `10`    |
-| **compute.defaultActionPool**                      | ❌        | Name of the default action pool (inherits all fields from `defaultSettings`).                       | `default-pool`                           | -       |
-| **compute.actionPools**                            | ❌        | List of action pools(inherits all fields from `defaultSettings`).                                   | -                                        | -       |
+| **compute.defaultSettings.projectId**          | ~        | GCP project identifier for provisioning resources.                                                  | `massive-fasdf-342018`                   | -       |
+| **compute.defaultSettings.region**             | ~        | GCP region for provisioning instances.                                                              | `us-east1`                               | -       |
+| **compute.defaultSettings.subnet**             | ~        | Full path to GCP subnet for networking.                                                             | `regions/us-east1/subnetworks/default`   | -       |
+| **compute.defaultSettings.vpc**                | ~        | Full path to GCP VPC for networking.                                                                | `global/networks/default`                | -       |
+| **compute.defaultSettings.zones**              | ~        | List of zones for instance placement (load balanced across zones).                                  | `us-east1-b`, `us-east1-c`, `us-east1-d` | -       |
+| **compute.defaultSettings.serviceAccountPath** | ~        | Path to service account JSON for authenticating to GCP APIs. If unset, uses default provider chain. | `/path/to/service-account-file.json`     | -       |
+| **compute.defaultSettings.diskSettings.size**  | ❌        | Disk size in GiB.                                                                                   | `20`                                     | `20`    |
+| **compute.defaultSettings.instanceType**       | ~        | GCE machine type for GitHub runners.                                                                | `e2-highcpu-4`                           | -       |
+| **compute.defaultSettings.architecture**         | ❌        | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.                                                             | `x64`                  | `x64`          |
+| **compute.defaultSettings.maxInstanceCount**     | ❌        | Maximum instance count (0 = unlimited).                                                                                                                                      | `10`                   | `10`           |
+| **compute.defaultSettings.maxInstanceCount**   | ❌        | Maximum number of instances (0 = unlimited).                                                        | `10`                                     | `10`    |
+| **compute.defaultActionPool**                  | ❌        | Name of the default action pool (inherits all fields from `defaultSettings`).                       | `default-pool`                           | -       |
+| **compute.actionPools**                        | ❌        | List of action pools(inherits all fields from `defaultSettings`).                                   | -                                        | -       |
 
 *GCP Action Pool Configuration*
 
 Action pool inherits from the default settings(except `name`). You can override the default Settings by specifying the
 property in the action pool.
 
-| Name                       | Required | Description                                                                                         | Example                                  | Default |
-|----------------------------|----------|-----------------------------------------------------------------------------------------------------|------------------------------------------|---------|
-| **name**                   | ✅        | Name of a specific action pool.                                                                     | `n2d-standard-2 `                        | -       |
-| **idleScaleDownInMinutes** | ❌        | Minutes of inactivity before scaling down an instance (accounts for boot + runner warmup).          | `10`                                     | `10`    |
-| **projectId**              | ~        | GCP project identifier for provisioning resources.                                                  | `massive-dynamo-342018`                  | -       |
-| **region**                 | ~        | GCP region for provisioning instances.                                                              | `us-east1`                               | -       |
-| **subnet**                 | ~        | Full path to GCP subnet for networking.                                                             | `regions/us-east1/subnetworks/default`   | -       |
-| **vpc**                    | ~        | Full path to GCP VPC for networking.                                                                | `global/networks/default`                | -       |
-| **zones**                  | ~        | List of zones for instance placement (load balanced across zones).                                  | `us-east1-b`, `us-east1-c`, `us-east1-d` | -       |
-| **serviceAccountPath**     | ❌        | Path to service account JSON for authenticating to GCP APIs. If unset, uses default provider chain. | `/path/to/service-account-file.json`     | -       |
-| **diskSettings.size**      | ❌        | Disk size in GiB.                                                                                   | `20`                                     | `20`    |
-| **instanceType**           | ~        | GCE machine type for GitHub runners.                                                                | `e2-highcpu-4`                           | -       |
-| **maxInstanceCount**       | ❌        | Maximum number of instances (0 = unlimited).                                                        | `10`                                     | `10`    |
+| Name                       | Required | Description                                                                                                      | Example                                  | Default       |
+|----------------------------|----------|------------------------------------------------------------------------------------------------------------------|------------------------------------------|---------------|
+| **name**                   | ✅        | Name of a specific action pool.                                                                                  | `n2d-standard-2 `                        | -             |
+| **idleScaleDownInMinutes** | ❌        | Minutes of inactivity before scaling down an instance (accounts for boot + runner warmup).                       | `10`                                     | `10`          |
+| **projectId**              | ~        | GCP project identifier for provisioning resources.                                                               | `massive-dynamo-342018`                  | -             |
+| **region**                 | ~        | GCP region for provisioning instances.                                                                           | `us-east1`                               | -             |
+| **subnet**                 | ~        | Full path to GCP subnet for networking.                                                                          | `regions/us-east1/subnetworks/default`   | -             |
+| **vpc**                    | ~        | Full path to GCP VPC for networking.                                                                             | `global/networks/default`                | -             |
+| **zones**                  | ~        | List of zones for instance placement (load balanced across zones).                                               | `us-east1-b`, `us-east1-c`, `us-east1-d` | -             |
+| **serviceAccountPath**     | ❌        | Path to service account JSON for authenticating to GCP APIs. If unset, uses default provider chain.              | `/path/to/service-account-file.json`     | -             |
+| **diskSettings.size**      | ❌        | Disk size in GiB.                                                                                                | `20`                                     | `20`          |
+| **instanceType**           | ~        | GCE machine type for GitHub runners.                                                                             | `e2-highcpu-4`                           | -             |
+| **maxInstanceCount**       | ❌        | Maximum number of instances (0 = unlimited).                                                                     | `10`                                     | `10`          |
+| **os**                     | ❌        | The operating system to be used. See compatibility matrix to see supported version                               | `ubuntu20.04`                            | `ubuntu20.04` |
+| **architecture**           | ❌        | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version. | `x64`                                    | `x64`         |
 
 ---
-
 
 
 ### 🧩 Full Config Examples
@@ -313,10 +324,48 @@ property in the action pool.
 See the full YAML examples in the sections above for both **AWS** and **GCP** autoscalers.
 
 - [AWS](config_examples/config-aws.yaml) 
-- [GCP](config_examples/config-gcp.yaml) 
+- [GCP](config_examples/config-gcp.yaml)
+
 ---
 
+## Metrics
 
+Metrics exposed at `/metrics` endpoint. Because this is a springboot app additional metrics are exposed via micrometer. Use this with Prometheus or Opentelemetry.
 
+| Metric Name                        | Type    | Tags                                                                 | Description |
+|------------------------------------|---------|----------------------------------------------------------------------|-------------|
+| `instance_operations_total`        | Counter | `pool_name`, `type` (`create` / `delete`), `result` (`success` / `failure`) | Increments when an operation on a compute instance occurs (create or delete), labeled by success or failure. |
+| `instance_count`                   | Gauge   | `pool_name`                                                          | Tracks the current number of running instances in an action pool. |
+| `instance_create_retries_total`    | Counter | `pool_name`, `type` (`full` / `failed`)                              | Increments when a job retries due to pool being full or an instance creation failure. |
+| `invalid_action_pool_total`        | Counter | `pool_name`, `repository_name`, `workflow_name`                      | Increments when a workflow references an invalid action pool. |
+| `invalid_workflow_job_label_total` | Counter | `repository_name`, `workflow_name`, `workflow_job_name`              | Increments when a workflow job has invalid labels, preventing Nimbus runners from picking it up. |
+
+## Supported Operating Systems Compatibility Matrix
+
+|             | AWS | GCP |
+|-------------|-----|-----|
+| Ubuntu20.04 | ✅   | ✅   |
+| Ubuntu22.04 | ✅   | ✅   |
+| Ubuntu23.04 | ✅   | ❌   |
+| Ubuntu24.04 | ✅   | ✅   |
+| Ubuntu25.04 | ✅   | ✅   |
+| Debian11    | ✅   | ✅   |
+| Debian12    | ✅   | ✅   |
+| Debian13    | ❌   | ❌   |
+
+## Supported CPU Architecture
+
+|       | AWS | GCP |
+|-------|-----|-----|
+| X64   | ✅   | ✅   |
+| ARM64 | ✅   | ✅   |
+
+Please not that if you choose to use arm64 ensure that the instance type is compatible. Please see official documentation below
+
+*AWS* 
+- https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-type-specifications.html
+
+*GCP*
+- https://cloud.google.com/compute/docs/instances/arm-on-compute
 
 ⚡ **NimbusRun**: because idle VMs should not be your cloud provider’s side hustle.  

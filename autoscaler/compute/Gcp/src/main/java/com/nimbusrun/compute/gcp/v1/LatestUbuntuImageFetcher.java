@@ -4,6 +4,11 @@ import com.google.cloud.compute.v1.Image;
 import com.google.cloud.compute.v1.ImagesClient;
 import com.google.cloud.compute.v1.InstancesClient;
 import com.google.cloud.compute.v1.ListImagesRequest;
+import com.nimbusrun.Utils;
+import com.nimbusrun.compute.Constants;
+import com.nimbusrun.compute.OperatingSystem;
+import com.nimbusrun.compute.ProcessorArchitecture;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Iterator;
@@ -11,9 +16,43 @@ import java.util.Optional;
 
 public class LatestUbuntuImageFetcher {
 
+    public static String determineArch(ProcessorArchitecture architecture){
+        String arch = "X86_64";
+        if(architecture == ProcessorArchitecture.ARM64){
+            arch = "ARM64";
+        }
+        return arch;
+    }
 
+    public static String findLatestImage(ProcessorArchitecture architecture, GcpOperatingSystem os) {
+        String project =os.gcpProviderProject();
+        String arch = determineArch(architecture);
+        String templ = os.createRegex();
+        try (ImagesClient imagesClient =ImagesClient.create()) {
+            ListImagesRequest request = ListImagesRequest.newBuilder()
+                    .setProject(project)
+                    .setMaxResults(10)
+                    .setOrderBy("creationTimestamp desc")  // newest first
+                    .build();
+            Iterator<Image> latestImageIterator = imagesClient.list(request)
+                    .iterateAll()
+                    .iterator();
+            while (latestImageIterator.hasNext()) {
+                Image latestImage = latestImageIterator.next();
+                if (arch.equalsIgnoreCase(latestImage.getArchitecture())  && latestImage.hasCreationTimestamp() && latestImage.getName().matches(templ)) {
+                    return "projects/%s/global/images/%s".formatted(project, latestImage.getName());
+                }
+            }
+
+        } catch (IOException e) {
+//            Utils.excessiveErrorLog("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()), e, log);
+        }
+        return null;
+    }
     public static void main(String[] args) throws IOException {
-        String project = "ubuntu-os-cloud";
+
+//        latestUbuntuImage(ProcessorArchitecture.X64, OperatingSystem.UBUNTU_24_04);
+        String project = "debian-cloud";
 
         try (ImagesClient imagesClient = ImagesClient.create(); InstancesClient instancesClient = InstancesClient.create()) {
             ListImagesRequest request = ListImagesRequest.newBuilder()
@@ -30,7 +69,7 @@ public class LatestUbuntuImageFetcher {
             Image latest = null;
             while(latestImageIterator.hasNext()) {
                 Image latestImage = latestImageIterator.next();
-                if("X86_64".equalsIgnoreCase(latestImage.getArchitecture()) && latestImage.hasCreationTimestamp() && (latest == null || Instant.parse(latestImage.getCreationTimestamp()).isAfter(Instant.parse(latest.getCreationTimestamp())))){
+                if(!"X86_64".equalsIgnoreCase(latestImage.getArchitecture()) && latestImage.hasCreationTimestamp() && (latest == null || Instant.parse(latestImage.getCreationTimestamp()).isAfter(Instant.parse(latest.getCreationTimestamp())))){
                     latest = latestImage;
                 }
             }

@@ -93,11 +93,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -117,7 +112,9 @@
     <profiles>
         <profile>
             <id>aws</id>
-
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <dependencies>
                 <dependency>
                     <groupId>com.nimbusrun</groupId>
@@ -130,9 +127,6 @@
             </build>
         </profile>
         <profile>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
             <id>gcp</id>
             <dependencies>
                 <dependency>

@@ -18,7 +18,6 @@ import com.nimbusrun.autoscaler.github.GithubService;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.github.GithubActionJob;
-import com.nimbusrun.github.WorkflowJobStatus;
 import com.nimbusrun.webhook.WebhookReceiver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -56,11 +55,36 @@ public class Autoscaler implements WebhookReceiver {
     private ConfigReader configReader;
     private final ExecutorService processMessageThread;
     private final ExecutorService threadPerTasks;
+    /**
+     * Tracks whether a GitHub runner is currently busy.
+     * This helps determine when it is safe to delete the instance
+     * after the runner reports it is no longer in use.
+     */
     private final Cache<String, AtomicBoolean> runnerLastBusy;
 
+    /**
+     * Prevents accidental deletions caused by unreliable data from the GitHub API
+     * or compute APIs (e.g., an occasional incorrect timestamp). Instead of
+     * deleting an instance immediately, we increment a delete counter. Only after
+     * the counter reaches a threshold do we proceed with the actual deletion.
+     */
     private final Cache<DeleteInstanceRequest, AtomicInteger> instanceIdDeleteCounter;
+
+    /**
+     * Prevents accidental deletions caused by unreliable data from the GitHub API
+     * or compute APIs (e.g., an occasional incorrect timestamp). Instead of
+     * deleting an instance immediately, we increment a delete counter. Only after
+     * the counter reaches a threshold do we proceed with the actual deletion.
+     */
     private final Cache<RunnerNameId, AtomicInteger> runnerIdDeleteCounter;
+
+    /**
+     * Prevents redundant scaling events by tracking jobs that have already
+     * triggered an upscale. This helps protect the system (especially from
+     * third-party triggers) and avoids unnecessary instance creation.
+     */
     private final Cache<String, AtomicInteger> githubRunnerIdUpscaledCache;
+
     /**
      * When a burst of jobs arrives, the underlying compute engine (AWS, GCP, etc.)
      * may not immediately report the total number of active instances. This race
@@ -81,8 +105,8 @@ public class Autoscaler implements WebhookReceiver {
         this.githubService = githubService;
         this.configReader = configReader;
         this.metricsContainer = metricsContainer;
-        this.processMessageThread = Executors.newFixedThreadPool(3);
-        this.scheduledExecutorService = Executors.newScheduledThreadPool(2);
+        this.processMessageThread = Executors.newFixedThreadPool(5);
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
         this.threadPerTasks = Executors.newCachedThreadPool();
         this.actionPoolMap = populateActionPoolMap();
         this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault).findAny();
@@ -114,6 +138,11 @@ public class Autoscaler implements WebhookReceiver {
                 .build();
     }
 
+
+    /**
+     *
+     * @return map of action pool names to {@link ActionPool}
+     */
     @VisibleForTesting
     private Map<String, ActionPool> populateActionPoolMap() {
         return this.getConfigReader().getActionPoolMap().values().stream().collect(Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b, ConcurrentHashMap::new));
@@ -124,6 +153,11 @@ public class Autoscaler implements WebhookReceiver {
     }
 
 
+    /**
+     * Items placed into {@link Autoscaler#retryUpscaleRequests}
+     * are moved back to {@link Autoscaler#receivedRequests}
+     * once their configured wait time has expired.
+     */
     private void scheduleRetry() {
         while(true) {
             try {
@@ -148,6 +182,12 @@ public class Autoscaler implements WebhookReceiver {
             }
         }
     }
+
+    /**
+     *  Adds the upscale requests to the  {@link Autoscaler#retryUpscaleRequests} dequeue.
+     * @param waitInMilliseconds - the time the upscale should wait before being retried
+     * @param upscaleRequest - the upscale request that should be retried later
+     */
     private void retryLater(long waitInMilliseconds, UpscaleRequest upscaleRequest) {
         log.debug("Will retry upscale for action pool %s".formatted(upscaleRequest.actionPool.getName()));
         if (upscaleRequest.upScaleReason == UpScaleReason.RETRY_POOL_FULL) {
@@ -159,7 +199,7 @@ public class Autoscaler implements WebhookReceiver {
     }
 
     /**
-     * These are ran together so that we limit the number of times we must interact with github api.
+     * To limit the number of api calls to github api we run several processes together
      */
     private void handleComputeAndRunners() {
         try {
@@ -174,11 +214,19 @@ public class Autoscaler implements WebhookReceiver {
             log.error("Failed the main loop ", e);
         }
     }
+
+    /**
+     * For metrics
+     */
     private void updateInstanceCountGauge(){
         this.compute.listAllComputeInstances().forEach((key, insts)->
                 metricsContainer.updateInstanceCount(key, insts.instances().size()));
     }
 
+    /**
+     * Updated the {@link Autoscaler#runnerLastBusy} cache with runner status
+     * @param runners - github runners
+     */
     private void updateRunnerInfo(List<Runner> runners) {
         try {
             runners.stream().forEach(r->{
@@ -189,6 +237,9 @@ public class Autoscaler implements WebhookReceiver {
         }
     }
 
+    /**
+     *
+     */
     private void deleteExpiredInstances() {
         var map = new HashMap<>(instanceIdDeleteCounter.asMap());
         map.keySet().stream()
@@ -214,6 +265,12 @@ public class Autoscaler implements WebhookReceiver {
                 });
     }
 
+    /**
+     * Deletes expired runners once the {@link Constants#DELETE_INSTANCE_RUNNER_THRESHOLD}
+     * has been exceeded. The threshold is managed through
+     * {@link Autoscaler#incrementRunnerIdDeleteCounter(Runner)}, which tracks
+     * repeated delete attempts to prevent accidental removals.
+     */
     private void deleteExpiredRunners() {
         var map = new HashMap<>(runnerIdDeleteCounter.asMap());
         map.keySet().stream()
@@ -232,15 +289,30 @@ public class Autoscaler implements WebhookReceiver {
                 });
     }
 
+    /**
+     * Increments delete counter for compute instances.
+     * @param deleteInstanceRequest
+     */
     private void incrementInstanceIdDeleteCounter(DeleteInstanceRequest deleteInstanceRequest) {
         this.instanceIdDeleteCounter.get(deleteInstanceRequest, (key) -> new AtomicInteger(1)).incrementAndGet();
     }
 
+    /**
+     * Increments delete counter for github runners
+     * @param runner
+     */
     private void incrementRunnerIdDeleteCounter(Runner runner) {
         this.runnerIdDeleteCounter.get(new RunnerNameId(runner.getName(),runner.getId()+""), (key) -> new AtomicInteger(1)).incrementAndGet();
 
     }
 
+
+    /**
+     * Consumes retry requests offered by {@link com.nimbusrun.actiontracker.RetryService}.
+     * For each {@link GithubActionJob}, this method checks with the GitHub API
+     * to determine whether the job is still queued. If so, the job is retried
+     * by passing it back to {@link #receive(GithubActionJob)}.
+     */
     private synchronized void processRetryMessage(){
         while(true){
             try{
@@ -255,6 +327,18 @@ public class Autoscaler implements WebhookReceiver {
         }
     }
 
+    /**
+     * Core upscaler loop.
+     *
+     * Consumes messages from {@link Autoscaler#receivedRequests}. If the target
+     * {@link ActionPool} has capacity, attempts to provision a new instance.
+     * If the pool is full or provisioning fails, the request is deferred to
+     * {@link Autoscaler#retryUpscaleRequests} for a later retry.
+     *
+     * Duplicate protection: if a given workflow job has already triggered an
+     * upscale (tracked via {@code githubRunnerIdUpscaledCache}), the request
+     * is ignored to prevent redundant scaling.
+     */
     private synchronized void processMessage() {
         while (true) {
             try {
@@ -311,12 +395,38 @@ public class Autoscaler implements WebhookReceiver {
         }
     }
 
+    /**
+     * Identifies and handles orphaned runners.
+     *
+     * A runner is considered orphaned if its status is "offline". This typically
+     * occurs when the underlying compute instance has been deleted or shut down,
+     * which is expected behavior once an instance exceeds its maximum idle time.
+     * For each orphaned runner, the delete counter is incremented to eventually
+     * trigger cleanup.
+     *
+     * @param runners list of GitHub runners to evaluate
+     */
     private void orphanedRunners(List<Runner> runners){
         runners.stream()
                 .filter(r-> "offline".equalsIgnoreCase(r.getStatus()))
                 .peek(r-> log.debug("Incrementing delete counter for orphan runner {}", r.getName()))
                 .forEach(r-> incrementRunnerIdDeleteCounter(r));
     }
+
+    /**
+     * Evaluates and scales down compute instances when they are no longer needed.
+     *
+     * An instance is considered eligible for scale-down if:
+     * 1. Its associated GitHub runner was previously busy but is now deleted
+     *    (i.e., the job finished and the runner was removed).
+     * 2. It has exceeded its maximum idle time threshold.
+     *
+     * For each eligible instance, the delete counter is incremented, which
+     * eventually triggers the instance to be terminated.
+     *
+     * @param runners map of runner name → runner object, used to determine
+     *                the current state of GitHub runners
+     */
     private void scaleDownInstance(Map<String, Runner> runners) {
 
         List<Callable<String>> callables = new ArrayList<>();
@@ -369,7 +479,7 @@ public class Autoscaler implements WebhookReceiver {
     }
 
 
-    /** So not to block kafka receiver the githubActionJob is offered to a dequeue
+    /** So not to block receiver the githubActionJob is offered to a dequeue
      *   for later processing in method {@link Autoscaler#processRetryMessage()}
      *
      * @param githubActionJob
@@ -378,26 +488,61 @@ public class Autoscaler implements WebhookReceiver {
         this.receivedRetryRequests.offer(githubActionJob);
     }
 
-    public boolean receive(GithubActionJob githubActionJob) {
-        if(githubActionJob.getStatus() != WorkflowJobStatus.QUEUED){
+    /**
+     * Determines whether the given {@link GithubActionJob} matches this autoscaler's
+     * configuration and should trigger an upscale request.
+     *
+     * The job is validated against:
+     * <ul>
+     *   <li>Workflow state (must still be queued).</li>
+     *   <li>Runner group name.</li>
+     *   <li>Action pool configuration and labels.</li>
+     * </ul>
+     *
+     * Invalid jobs (e.g., wrong labels, unknown action pool, or no pool available)
+     * are logged and recorded in metrics, but not processed further.
+     *
+     * If valid, the job is assigned to a matching action pool (or the default
+     * action pool if available) and added to the {@code receivedRequests} queue
+     * for scaling.
+     *
+     * @param gj the GitHub Actions job under evaluation
+     * @return {@code true} if the job was accepted and queued for processing;
+     *         {@code false} otherwise
+     */
+    public boolean receive(GithubActionJob gj) {
+
+        ValidWorkFlowJob validWorkflowJob = new ValidWorkFlowJob(gj, actionPoolMap, this.githubService.getRunnerGroupName());
+        if(validWorkflowJob.isWorkflowIsNotQueued()){
             return false;
         }
-        ActionPool actionPool = null;
-        boolean isForGroup = false;
-        if(githubActionJob.getActionGroupName().isPresent() && githubActionJob.getActionGroupName().get().equalsIgnoreCase(this.githubService.getRunnerGroupName())){
-            isForGroup = true;
-        }
-        if(githubActionJob.getActionPoolName().isPresent()) {
-            actionPool = actionPoolMap.getOrDefault(githubActionJob.getActionPoolName().get(), defaultActionPool.orElse(null));
-        }
-        if (isForGroup) {
-            if(actionPool == null){
-                log.warn("No action pool specified for workflow and no default action pool configured: {}", githubActionJob.getJsonStr());
+        if (validWorkflowJob.isForGroup()) {
+            ActionPool actionPool = null;
+
+            if(validWorkflowJob.isInvalidLabels()){
+                this.metricsContainer.invalidWorkflowJobLabelTotal(gj.getRepositoryFullName(), gj.getWorkflowName(), gj.getName());
+                log.warn("Repository: {}, workflow name: {}, workflow job: {} has invalids labels: {}", gj.getRepositoryFullName(), gj.getWorkflowName(), gj.getName(), gj.getInvalidLabels());
+            }
+            if(validWorkflowJob.isInvalidActionPool()) {
+                metricsContainer.invalidActionPoolTotal(gj.getActionPoolName().get(), gj.getRepositoryFullName(), gj.getWorkflowName());
+                List<String> actionPoolNames = this.actionPoolMap.values().stream().map(ActionPool::getName).toList();
+                log.warn("Unknown action pool specified with name {} from repository: {}, workflow name: {}. Valid Action Pool names are: {}. Please let repository maintainer know to update workflow", gj.getActionPoolName().orElse("N/A"), gj.getRepositoryFullName(), gj.getWorkflowName(), actionPoolNames );
+            } else if (gj.getActionPoolName().isPresent()){
+                actionPool = actionPoolMap.get(gj.getActionPoolName().get());
+            }
+            else {
+                actionPool = defaultActionPool.orElse(null);
+            }
+            if(validWorkflowJob.isInvalidActionPool() || validWorkflowJob.isInvalidLabels()){
                 return false;
             }
-            log.info("Received action pool request for {} and runner group: {}, run_url: {}", actionPool.getName(), this.githubService.getRunnerGroupName(), githubActionJob.getRunUrl());
+            if(actionPool == null){
+                log.warn("No action pool specified for workflow and no default action pool configured: {}", gj.getJsonStr());
+                return false;
+            }
+            log.info("Received action pool request for {} and runner group: {}, run_url: {}", actionPool.getName(), this.githubService.getRunnerGroupName(), gj.getHtmlUrl());
 
-            return receivedRequests.add(new UpscaleRequest(actionPool, githubActionJob.getId()));
+            return receivedRequests.add(new UpscaleRequest(actionPool, gj.getId()));
         }
         return false;
     }

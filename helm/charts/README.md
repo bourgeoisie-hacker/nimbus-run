@@ -137,20 +137,22 @@ Controls how NimbusRun provisions compute for your GitHub Actions runners. Suppo
 
 #### AWS Settings (`compute.aws`)  
 
-| Name | Description | Example |
-|------|-------------|---------|
-| `compute.aws.defaultSettings.idleScaleDownInMinutes` | Minutes of inactivity before scaling down (accounts for boot + runner startup). | `10` |
-| `compute.aws.defaultSettings.region` | AWS region for provisioning. | `us-east-1` |
-| `compute.aws.defaultSettings.subnet` | Subnet ID for networking. | `subnet-1234` |
-| `compute.aws.defaultSettings.securityGroup` | Security group ID for firewall rules. | `sg-1234` |
-| `compute.aws.defaultSettings.credentialsProfile` | AWS credentials profile name (or uses [default chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html)). | `myProfile` |
-| `compute.aws.defaultSettings.diskSettings.type` | EBS volume type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`. | `gp3` |
-| `compute.aws.defaultSettings.diskSettings.size` | Disk size in GiB. | `20` |
-| `compute.aws.defaultSettings.instanceType` | EC2 instance type for runners. | `t3.medium` |
-| `compute.aws.defaultSettings.maxInstanceCount` | Max instances allowed (0 = unlimited). | `10` |
-| `compute.aws.defaultSettings.keyPairName` | EC2 key pair name for SSH. | `myKeyPair` |
-| `compute.aws.defaultActionPool.name` | Default action pool name (inherits all defaults). | `default-pool` |
-| `compute.aws.actionPools` | List of action pool objects. Each pool can override defaults. | See below |
+| Name                                                 | Description                                                                                                                                     | Example        |
+|------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
+| `compute.aws.defaultSettings.idleScaleDownInMinutes` | Minutes of inactivity before scaling down (accounts for boot + runner startup).                                                                 | `10`           |
+| `compute.aws.defaultSettings.region`                 | AWS region for provisioning.                                                                                                                    | `us-east-1`    |
+| `compute.aws.defaultSettings.subnet`                 | Subnet ID for networking.                                                                                                                       | `subnet-1234`  |
+| `compute.aws.defaultSettings.securityGroup`          | Security group ID for firewall rules.                                                                                                           | `sg-1234`      |
+| `compute.aws.defaultSettings.credentialsProfile`     | AWS credentials profile name (or uses [default chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html)). | `myProfile`    |
+| `compute.aws.defaultSettings.diskSettings.type`      | EBS volume type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`.                                                                                  | `gp3`          |
+| `compute.aws.defaultSettings.diskSettings.size`      | Disk size in GiB.                                                                                                                               | `20`           |
+| `compute.aws.defaultSettings.instanceType`           | EC2 instance type for runners.                                                                                                                  | `t3.medium`    |
+| `compute.aws.defaultSettings.maxInstanceCount`       | Max instances allowed (0 = unlimited).                                                                                                          | `10`           |
+| `compute.aws.defaultSettings.os`                     | The operating system to be used. See compatibility matrix to see supported version                                                              | `ubuntu22.04`  |
+| `compute.aws.defaultSettings.architecture`           | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.                                | `x64`          |
+| `compute.aws.defaultSettings.keyPairName`            | EC2 key pair name for SSH.                                                                                                                      | `myKeyPair`    |
+| `compute.aws.defaultActionPool`                      | Default action pool (inherits from defaults).                                                                                                   | `default-pool` |
+| `compute.aws.actionPools`                            | List of action pool objects. Each pool can override defaults.                                                                                   | See below      |
 
 Example AWS action pool:  
 
@@ -170,20 +172,22 @@ actionPools:
 
 #### GCP Settings (`compute.gcp`)  
 
-| Name | Description | Example |
-|------|-------------|---------|
-| `compute.gcp.defaultSettings.idleScaleDownInMinutes` | Minutes of inactivity before scaling down. | `10` |
-| `compute.gcp.defaultSettings.projectId` | GCP project ID. | `massive-dynamo-342018` |
-| `compute.gcp.defaultSettings.region` | GCP region for provisioning. | `us-east1` |
-| `compute.gcp.defaultSettings.subnet` | Subnet path. | `regions/us-east1/subnetworks/default` |
-| `compute.gcp.defaultSettings.vpc` | VPC path. | `global/networks/default` |
-| `compute.gcp.defaultSettings.zones` | List of zones for placement. | `[us-east1-b, us-east1-c, us-east1-d]` |
-| `compute.gcp.defaultSettings.serviceAccountPath` | Path to service account JSON (or uses default provider chain). | `/path/to/service-account.json` |
-| `compute.gcp.defaultSettings.diskSettings.size` | Disk size in GiB. | `20` |
-| `compute.gcp.defaultSettings.instanceType` | GCE machine type. | `e2-highcpu-4` |
-| `compute.gcp.defaultSettings.maxInstanceCount` | Max instances allowed (0 = unlimited). | `10` |
-| `compute.gcp.defaultActionPool.name` | Default action pool name. | `default-pool` |
-| `compute.gcp.actionPools` | List of action pool objects. Each pool can override defaults. | See below |
+| Name                                                 | Description                                                                                                      | Example                                |
+|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| `compute.gcp.defaultSettings.idleScaleDownInMinutes` | Minutes of inactivity before scaling down.                                                                       | `10`                                   |
+| `compute.gcp.defaultSettings.projectId`              | GCP project ID.                                                                                                  | `massive-dynamo-342018`                |
+| `compute.gcp.defaultSettings.region`                 | GCP region for provisioning.                                                                                     | `us-east1`                             |
+| `compute.gcp.defaultSettings.subnet`                 | Subnet path.                                                                                                     | `regions/us-east1/subnetworks/default` |
+| `compute.gcp.defaultSettings.vpc`                    | VPC path.                                                                                                        | `global/networks/default`              |
+| `compute.gcp.defaultSettings.zones`                  | List of zones for placement.                                                                                     | `[us-east1-b, us-east1-c, us-east1-d]` |
+| `compute.gcp.defaultSettings.serviceAccountPath`     | Path to service account JSON (or uses default provider chain).                                                   | `/path/to/service-account.json`        |
+| `compute.gcp.defaultSettings.diskSettings.size`      | Disk size in GiB.                                                                                                | `20`                                   |
+| `compute.gcp.defaultSettings.instanceType`           | GCE machine type.                                                                                                | `e2-highcpu-4`                         |
+| `compute.aws.defaultSettings.os`                     | The operating system to be used. See compatibility matrix to see supported version                               | `ubuntu22.04`                          |
+| `compute.aws.defaultSettings.architecture`           | The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version. | `x64`                                  |
+| `compute.gcp.defaultSettings.maxInstanceCount`       | Max instances allowed (0 = unlimited).                                                                           | `10`                                   |
+| `compute.gcp.defaultActionPool`                      | Default action pool. Inherits from default settings.                                                             | `default-pool`                         |
+| `compute.gcp.actionPools`                            | List of action pool objects. Each pool can override defaults.                                                    | See below                              |
 
 Example GCP action pool:  
 

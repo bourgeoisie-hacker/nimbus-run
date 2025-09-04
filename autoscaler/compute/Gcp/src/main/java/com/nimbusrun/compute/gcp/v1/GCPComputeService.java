@@ -50,6 +50,7 @@ import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.Utils;
+import com.nimbusrun.compute.ProcessorArchitecture;
 import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,8 @@ public class GCPComputeService extends Compute {
     private final Cache<String, Set<String>> projectIdZones;
     private final Cache<String, String> latestUbuntuImage;
     private final Integer DEFAULT_DISK_SIZE_GB = 20;
-
+    private final GcpOperatingSystem DEFAULT_OPERATING_SYSTEM = GcpOperatingSystem.UBUNTU_24_04;
+    private final ProcessorArchitecture DEFAULT_PROCESSOR_ARCHITECTURE = ProcessorArchitecture.X64;
     private static class RegionZones {
         private final String region;
         private final Set<String> zones;
@@ -260,7 +262,17 @@ public class GCPComputeService extends Compute {
                     .build();
 
             // Create the Instance object with the relevant information.
-            String startupScript = startUpScript(githubRunnerToken, this.githubApi.getRunnerGroupName(), autoscalerActionPool, instanceName, githubApi.getOrganization());
+
+            GcpOperatingSystem os = Optional.ofNullable(actionPool.getOs()).orElse(DEFAULT_OPERATING_SYSTEM);
+            ProcessorArchitecture architecture = Optional.ofNullable(actionPool.getArchitecture()).orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
+
+            String startupScript = startUpScript(githubRunnerToken, this.githubApi.getRunnerGroupName(),
+                    autoscalerActionPool,
+                    instanceName,
+                    githubApi.getOrganization(),
+                    architecture,
+                    os.getOperatingSystem().getFamily());
+
             Metadata md = Metadata.newBuilder()
                     .addItems(Items.newBuilder().setKey("startup-script").setValue(startupScript).build()).build();
             Instance instance = Instance.newBuilder()
@@ -391,6 +403,14 @@ public class GCPComputeService extends Compute {
             if(actionPool.getDiskSettings() == null){
                 errors.add("Action Pool %s missing vpc. Using default disk size %sGi ".formatted(name,DEFAULT_DISK_SIZE_GB));
             }
+            if(actionPool.getOs() != null && actionPool.getOs() == GcpOperatingSystem.UNKNOWN){
+                errors.add("Invalid operating system specified for action pool %s".formatted(name));
+            } else if(actionPool.getOs() != null && actionPool.getOs() != GcpOperatingSystem.UNKNOWN && !actionPool.getOs().isAvailable()){
+                errors.add("Operating system %s specified for action pool %s is not available as a Runner".formatted(actionPool.getOs().getOperatingSystem().getShortName(),name));
+            }
+            if(actionPool.getArchitecture() != null && actionPool.getArchitecture() == ProcessorArchitecture.UNKNOWN){
+                errors.add("Invalid cpu architecture specified for action pool %s".formatted(name));
+            }
         }
     }
 
@@ -445,18 +465,29 @@ public class GCPComputeService extends Compute {
 
     public Optional<String> cacheLatestUbuntuVersion(GCPConfig.ActionPool actionPool){
         try{
-            return Optional.ofNullable(latestUbuntuImage.get(actionPool.getProjectId(), (projectId)-> latestUbuntuImage(actionPool)));
+            return Optional.ofNullable(latestUbuntuImage.get(actionPool.getProjectId(), (projectId)-> latestMachineImage(actionPool)));
         }catch (NullPointerException e){
 
         }
         return Optional.empty();
     }
-    public String latestUbuntuImage(GCPConfig.ActionPool actionPool) {
-        String ubuntuProject = "ubuntu-os-cloud";//Ubuntu's project id
 
-        try (ImagesClient imagesClient = GCPClients.createImagesClient(actionPool)) {
+
+    public static String determineArch(ProcessorArchitecture architecture){
+        String arch = "X86_64";
+        if(architecture == ProcessorArchitecture.ARM64){
+            arch = "ARM64";
+        }
+        return arch;
+    }
+
+    public static String latestMachineImage(GCPConfig.ActionPool actionPool) {
+        String project =actionPool.getOs().gcpProviderProject();
+        String arch = determineArch(actionPool.getArchitecture());
+        String templ = actionPool.getOs().createRegex();
+        try (ImagesClient imagesClient =ImagesClient.create()) {
             ListImagesRequest request = ListImagesRequest.newBuilder()
-                    .setProject(ubuntuProject)
+                    .setProject(project)
                     .setMaxResults(10)
                     .setOrderBy("creationTimestamp desc")  // newest first
                     .build();
@@ -465,13 +496,13 @@ public class GCPComputeService extends Compute {
                     .iterator();
             while (latestImageIterator.hasNext()) {
                 Image latestImage = latestImageIterator.next();
-                if ("X86_64".equalsIgnoreCase(latestImage.getArchitecture()) && latestImage.hasCreationTimestamp() && latestImage.getName().contains("ubuntu")) {
-                    return "projects/%s/global/images/%s".formatted(ubuntuProject, latestImage.getName());
+                if (arch.equalsIgnoreCase(latestImage.getArchitecture())  && latestImage.hasCreationTimestamp() && latestImage.getName().matches(templ)) {
+                    return "projects/%s/global/images/%s".formatted(project, latestImage.getName());
                 }
             }
 
         } catch (IOException e) {
-            Utils.excessiveErrorLog("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()), e, log);
+//            Utils.excessiveErrorLog("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()), e, log);
         }
         return null;
     }
