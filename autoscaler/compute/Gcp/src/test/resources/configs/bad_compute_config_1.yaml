@@ -1,0 +1,25 @@
+actionPools:
+  - name: test
+    idleScaleDownInMinutes: 10
+    # Missing projectId
+#    projectId: massive-dynamo-342018
+    # Missing Region
+#    region: us-east1
+    # Missing subnet
+#    subnet: regions/us-east1/subnetworks/default
+    # Missing vpc
+#    vpc: global/networks/default
+    # Missing zones
+#    zones:
+#      - us-east1-b
+#      - us-east1-c
+#      - us-east1-d
+    # serviceAccountPath doesn't exist
+    serviceAccountPath: /path/to/service-account-file.json
+    diskSettings:
+      size: 20
+    # Missing instanceType
+#    instanceType: e2-highcpu-4
+    maxInstanceCount: 10
+    os: ubuntu19.04
+    architecture: x64

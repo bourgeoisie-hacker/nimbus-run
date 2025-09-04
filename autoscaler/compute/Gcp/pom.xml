@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>0.2.31</version>
+        <version>0.3.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -59,6 +59,35 @@
             <groupId>com.nimbusrun</groupId>
             <artifactId>common</artifactId>
             <version>${project.parent.version}</version>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+<!--            <version>5.10.2</version>-->
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Mockito + JUnit 5 -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+<!--            <version>5.11.0</version>-->
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Static mocking (needed for latestMachineImage) -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>5.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

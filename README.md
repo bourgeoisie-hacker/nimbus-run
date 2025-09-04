@@ -308,6 +308,7 @@ property in the action pool.
 | **region**                 | ~        | GCP region for provisioning instances.                                                                           | `us-east1`                               | -             |
 | **subnet**                 | ~        | Full path to GCP subnet for networking.                                                                          | `regions/us-east1/subnetworks/default`   | -             |
 | **vpc**                    | ~        | Full path to GCP VPC for networking.                                                                             | `global/networks/default`                | -             |
+| **publicIp**               | ~        | determines whether or not the instances are assigned emphermal public ip addresses                               | `false`                                  | false         |
 | **zones**                  | ~        | List of zones for instance placement (load balanced across zones).                                               | `us-east1-b`, `us-east1-c`, `us-east1-d` | -             |
 | **serviceAccountPath**     | ❌        | Path to service account JSON for authenticating to GCP APIs. If unset, uses default provider chain.              | `/path/to/service-account-file.json`     | -             |
 | **diskSettings.size**      | ❌        | Disk size in GiB.                                                                                                | `20`                                     | `20`          |

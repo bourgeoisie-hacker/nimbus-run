@@ -42,6 +42,7 @@ public class GCPConfig {
     setFromDefault(actionPool::getProjectId, defaults::getProjectId, actionPool::setProjectId);
     setFromDefault(actionPool::getSubnet, defaults::getSubnet, actionPool::setSubnet);
     setFromDefault(actionPool::getVpc, defaults::getVpc, actionPool::setVpc);
+    setFromDefault(actionPool::isPublicIp, defaults::isPublicIp, actionPool::setPublicIp);
     setFromDefault(actionPool::getZones, defaults::getZones, actionPool::setZones);
     setFromDefault(actionPool::getServiceAccountPath, defaults::getServiceAccountPath,
         actionPool::setServiceAccountPath);
@@ -143,6 +144,7 @@ public class GCPConfig {
     private Boolean isNvme;
     private String subnet;
     private String vpc;
+    private boolean publicIp;
     private List<String> zones;
     private DiskSettings diskSettings;
     @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
@@ -239,6 +241,14 @@ public class GCPConfig {
 
     public void setVpc(String vpc) {
       this.vpc = vpc;
+    }
+
+    public boolean isPublicIp() {
+      return publicIp;
+    }
+
+    public void setPublicIp(boolean publicIp) {
+      this.publicIp = publicIp;
     }
 
     public List<String> getZones() {

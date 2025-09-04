@@ -1,0 +1,59 @@
+defaultSettings:
+  idleScaleDownInMinutes: 10
+  projectId: massive-dynamo-342018
+  region: us-east1
+  subnet: regions/us-east1/subnetworks/default
+  vpc: global/networks/default
+  zones:
+    - us-east1-b
+    - us-east1-c
+    - us-east1-d
+  diskSettings:
+    size: 20
+  instanceType: e2-highcpu-4
+  maxInstanceCount: 10
+  os: ubuntu19.04
+  architecture: x64
+defaultActionPool:
+  name: default-pool
+
+actionPools:
+  - name: test1
+    instanceType: n2d-standard-2
+    maxInstanceCount: 1
+    subnet: subnet-1234
+    os: ubuntu23.04
+    architecture: arm32
+    diskSettings:
+      size: 12
+
+  - name: test2
+    instanceType: n1-standard-4
+    maxInstanceCount: 4
+    os: debian13
+    architecture: x64
+
+  - name: test3
+    instanceType: n1-standard-4
+    maxInstanceCount: 4
+    os: ubuntu22.04
+    architecture: arm64
+
+  - name: test4
+    instanceType: n1-standard-4
+    maxInstanceCount: 4
+    os: ubuntu24.04
+    architecture: x64
+
+  - name: test5
+    instanceType: n1-standard-4
+    maxInstanceCount: 4
+    os: debian11
+    architecture: x64
+
+  - name: test6
+    instanceType: n1-standard-4
+    maxInstanceCount: 4
+    os: debian12
+    architecture: x64
+

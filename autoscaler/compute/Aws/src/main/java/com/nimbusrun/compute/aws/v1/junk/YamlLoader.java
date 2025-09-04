@@ -1,5 +1,6 @@
-package com.nimbusrun.compute.aws.v1;
+package com.nimbusrun.compute.aws.v1.junk;
 
+import com.nimbusrun.compute.aws.v1.AwsConfig;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;

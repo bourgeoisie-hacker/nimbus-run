@@ -61,7 +61,7 @@ public class GCPComputeService extends Compute {
   private static Logger log = LoggerFactory.getLogger(GCPComputeService.class);
   private Map<String, GCPConfig.ActionPool> gcpActionPool;
   private GCPConfig clientConfig;
-  private final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
+  final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
   private final String APPLICATION_NAME_LABEL_KEY = "nimbus-run";
   private final Cache<String, Map<String, RegionZones>> projectIdToRegionZones;
   private final Cache<String, Set<String>> projectIdZones;
@@ -179,7 +179,7 @@ public class GCPComputeService extends Compute {
     return List.of();
   }
 
-  private String createLabelFilter(String actionPoolName) {
+  public String createLabelFilter(String actionPoolName) {
     String template = "labels.%s=%s";
     Map<String, String> map = createInstanceLabelMap(actionPoolName);
     return map.keySet().stream().map(k -> template.formatted(k, map.get(k)))
@@ -244,6 +244,15 @@ public class GCPComputeService extends Compute {
     return responseMap;
   }
 
+  public ProcessorArchitecture getProcessorArchitecture(GCPConfig.ActionPool actionPool){
+    return Optional.ofNullable(actionPool.getArchitecture())
+        .orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
+  }
+
+  public GcpOperatingSystem getOperatingSystem(GCPConfig.ActionPool actionPool){
+    return Optional.ofNullable(actionPool.getOs())
+        .orElse(DEFAULT_OPERATING_SYSTEM);
+  }
   @Override
   public boolean createCompute(ActionPool autoscalerActionPool) {
     //TODO create a counter for when an instance is created
@@ -264,7 +273,7 @@ public class GCPComputeService extends Compute {
         return false;
       }
       String githubRunnerToken = githubRunnerTokenOpt.get();
-      Optional<String> sourceImage = cacheLatestUbuntuVersion(actionPool);
+      Optional<String> sourceImage = cacheLatestImageVersion(actionPool);
       if (sourceImage.isEmpty()) {
         log.error("Failed to query latest ubuntu image");
         return false;
@@ -283,10 +292,8 @@ public class GCPComputeService extends Compute {
 
       // Create the Instance object with the relevant information.
 
-      GcpOperatingSystem os = Optional.ofNullable(actionPool.getOs())
-          .orElse(DEFAULT_OPERATING_SYSTEM);
-      ProcessorArchitecture architecture = Optional.ofNullable(actionPool.getArchitecture())
-          .orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
+      GcpOperatingSystem os = getOperatingSystem(actionPool);
+      ProcessorArchitecture architecture = getProcessorArchitecture(actionPool);
 
       String startupScript = startUpScript(githubRunnerToken, this.githubApi.getRunnerGroupName(),
           autoscalerActionPool,
@@ -303,7 +310,8 @@ public class GCPComputeService extends Compute {
           .addDisks(attachedDisk)
           .setMachineType("zones/%s/machineTypes/%s".formatted(zone, actionPool.getInstanceType()))
           .putAllLabels(labels)
-          .addNetworkInterfaces(createNetworkInterface(actionPool.getVpc(), actionPool.getSubnet()))
+          .addNetworkInterfaces(createNetworkInterface(actionPool.getVpc(), actionPool.getSubnet(),
+              actionPool.isPublicIp()))
           .mergeMetadata(md)
           .build();
 
@@ -342,12 +350,14 @@ public class GCPComputeService extends Compute {
     return false;
   }
 
-  private NetworkInterface createNetworkInterface(String vpcName, String subnetName) {
-//        return  NetworkInterface.newBuilder().setNetwork(vpcName).setSubnetwork(subnetName).build();
-    return NetworkInterface.newBuilder().addAccessConfigs(AccessConfig.newBuilder().setType(
-            AccessConfig.Type.ONE_TO_ONE_NAT.toString()).setName("External NAT").build())
-        .setName("global/networks/default").build();
-
+  private NetworkInterface createNetworkInterface(String vpcName, String subnetName, boolean publicIp) {
+    if(publicIp){
+      return NetworkInterface.newBuilder().setNetwork(vpcName).setNetwork(subnetName)
+          .addAccessConfigs(AccessConfig.newBuilder().setType(
+              AccessConfig.Type.ONE_TO_ONE_NAT.toString()).setName("External NAT").build())
+          .setName("nic0").build();
+    }
+    return  NetworkInterface.newBuilder().setNetwork(vpcName).setSubnetwork(subnetName).build();
   }
 
 
@@ -380,102 +390,99 @@ public class GCPComputeService extends Compute {
   }
 
 
-  private void validateActionPools(List<GCPConfig.ActionPool> actionPools, List<String> errors,
+  public void validateActionPools(List<GCPConfig.ActionPool> actionPools, List<String> errors,
       List<String> warnings) {
 
     for (int i = 0; i < actionPools.size(); i++) {
       GCPConfig.ActionPool actionPool = actionPools.get(i);
       String name = "%s#".formatted(i);
       if (actionPool.getName() == null) {
-        errors.add("Action Pool %s is missing Name".formatted(name));
+        errors.add("Action pool %s is missing Name".formatted(name));
       } else {
         name = actionPool.getName();
       }
       if (actionPool.getProjectId() == null) {
         errors.add(
-            "Action Pool %s missing projectId. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing projectId. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
       if (actionPool.getRegion() == null) {
         errors.add(
-            "Action Pool %s missing region. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing region. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       } else if (actionPool.getProjectId() != null && !regionExists(actionPool,
           actionPool.getRegion())) {
-        errors.add("Action Pool %s region %s for projectId does not exist.".formatted(name,
+        errors.add("Action pool %s region %s for projectId does not exist.".formatted(name,
             actionPool.getRegion(), actionPool.getProjectId()));
       }
       if (actionPool.getZones() == null) {
         errors.add(
-            "Action Pool %s missing zones. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing zones. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       } else if (actionPool.getProjectId() != null) {
         for (String zone : actionPool.getZones()) {
           if (!zoneExists(actionPool, zone)) {
             errors.add(
-                "Action Pool %s zone %s for projectId %s does not exist".formatted(name, zone,
+                "Action pool %s zone %s for projectId %s does not exist".formatted(name, zone,
                     actionPool.getProjectId()));
           }
         }
       }
       if (actionPool.getInstanceType() == null) {
         errors.add(
-            "Action Pool %s missing instanceType. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing instanceType. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
       if (actionPool.getMaxInstanceCount() == null) {
         warnings.add(
-            "Action Pool %s missing maxInstanceCount. Default value will be used".formatted(name));
-      }
-      if (actionPool.getMaxInstanceCount() == null) {
-        warnings.add(
-            "Action Pool %s missing maxInstanceCount. Default value %s will be used".formatted(name,
+            "Action pool %s missing maxInstanceCount. Default value %s will be used".formatted(name,
                 Constants.DEFAULT_MAX_INSTANCES));
       }
       if (actionPool.getIdleScaleDownInMinutes() == null) {
         warnings.add(
-            "Action Pool %s missing idleScaleDownInMinutes. Default value %s will be used".formatted(
+            "Action pool %s missing idleScaleDownInMinutes. Default value %s will be used".formatted(
                 name, Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES));
       }
       if (actionPool.getServiceAccountPathOpt().isEmpty()) {
         warnings.add(
-            "Action Pool %s missing serviceAccountPath. Using environment default credentials");
+            "Action pool %s missing serviceAccountPath. Using environment default credentials");
       } else if (Files.notExists(Paths.get(actionPool.getServiceAccountPath()))
           || !Files.isRegularFile(Paths.get(actionPool.getServiceAccountPath()))) {
         errors.add(
-            "Action Pool %s serviceAccountPath file at \"%s\" does not exist or is not a regular file".formatted(
+            "Action pool %s serviceAccountPath file at \"%s\" does not exist or is not a regular file".formatted(
                 name, actionPool.getServiceAccountPath()));
       }
       if (actionPool.getSubnet() == null) {
         errors.add(
-            "Action Pool %s missing subnet. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing subnet. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
       if (actionPool.getVpc() == null) {
         errors.add(
-            "Action Pool %s missing vpc. Please add to defaultSettings or on Action Pool".formatted(
+            "Action pool %s missing vpc. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
       if (actionPool.getDiskSettings() == null) {
-        errors.add("Action Pool %s missing vpc. Using default disk size %sGi ".formatted(name,
+        errors.add("Action pool %s missing vpc. Using default disk size %sGi ".formatted(name,
             DEFAULT_DISK_SIZE_GB));
       }
       if (actionPool.getOs() != null && actionPool.getOs() == GcpOperatingSystem.UNKNOWN) {
-        errors.add("Invalid operating system specified for action pool %s".formatted(name));
+        errors.add("Action pool %s has unknown operating system specified".formatted(name));
       } else if (actionPool.getOs() != null && actionPool.getOs() != GcpOperatingSystem.UNKNOWN
           && !actionPool.getOs().isAvailable()) {
         errors.add(
-            "Operating system %s specified for action pool %s is not available as a Runner".formatted(
-                actionPool.getOs().getOperatingSystem().getShortName(), name));
+            "Action pool %s has invalid operating system specified %s".formatted(name,
+                actionPool.getOs().getOperatingSystem().getShortName()));
       }
       if (actionPool.getArchitecture() != null
           && actionPool.getArchitecture() == ProcessorArchitecture.UNKNOWN) {
-        errors.add("Invalid cpu architecture specified for action pool %s".formatted(name));
+        errors.add("Action pool %s has unknown cpu architecture specified".formatted(name));
       }
     }
   }
 
-  private boolean regionExists(GCPConfig.ActionPool actionPool, String region) {
+
+  public boolean regionExists(GCPConfig.ActionPool actionPool, String region) {
     try {
       var map = listRegions(actionPool);
       return map.containsKey(region);
@@ -486,7 +493,7 @@ public class GCPComputeService extends Compute {
     }
   }
 
-  private boolean zoneExists(GCPConfig.ActionPool actionPool, String zone) {
+  public boolean zoneExists(GCPConfig.ActionPool actionPool, String zone) {
     try {
       Set<String> set = listZones(actionPool);
       return set.contains(zone);
@@ -534,12 +541,12 @@ public class GCPComputeService extends Compute {
   }
 
 
-  public Optional<String> cacheLatestUbuntuVersion(GCPConfig.ActionPool actionPool) {
+  public Optional<String> cacheLatestImageVersion(GCPConfig.ActionPool actionPool) {
     try {
       return Optional.ofNullable(latestUbuntuImage.get(actionPool.getProjectId(),
-          (projectId) -> latestMachineImage(actionPool)));
+          (projectId) -> latestMachineImage(getProcessorArchitecture(actionPool), getOperatingSystem(actionPool))));
     } catch (NullPointerException e) {
-
+      Utils.excessiveErrorLog("Error when fetching latest image due to %s".formatted(e.getMessage()),e,log);
     }
     return Optional.empty();
   }
@@ -553,10 +560,10 @@ public class GCPComputeService extends Compute {
     return arch;
   }
 
-  public static String latestMachineImage(GCPConfig.ActionPool actionPool) {
-    String project = actionPool.getOs().gcpProviderProject();
-    String arch = determineArch(actionPool.getArchitecture());
-    String templ = actionPool.getOs().createRegex();
+  public static String latestMachineImage(ProcessorArchitecture architecture, GcpOperatingSystem operatingSystem) {
+    String project = operatingSystem.gcpProviderProject();
+    String arch = determineArch(architecture);
+    String templ = operatingSystem.createRegex();
     try (ImagesClient imagesClient = ImagesClient.create()) {
       ListImagesRequest request = ListImagesRequest.newBuilder()
           .setProject(project)
@@ -575,7 +582,7 @@ public class GCPComputeService extends Compute {
       }
 
     } catch (IOException e) {
-//            Utils.excessiveErrorLog("Failed to query for latest image for action pool %s due to %s".formatted(actionPool.getName(), e.getMessage()), e, log);
+            Utils.excessiveErrorLog("Failed to query for latest image for action pool due to %s".formatted( e.getMessage()), e, log);
     }
     return null;
   }

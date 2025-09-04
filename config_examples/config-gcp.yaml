@@ -70,6 +70,11 @@ compute:
     # Full path to the GCP VPC network for instance networking
     vpc: global/networks/default
 
+    # Determines if the instances should be created with a public ip address.
+    # If your subnet doesn't have a natgateway then you probably want this to be true.
+    # It defaults to false
+    publicIp: true
+
     # Available zones for instance placement (automatically balances across these)
     zones:
       - us-east1-b

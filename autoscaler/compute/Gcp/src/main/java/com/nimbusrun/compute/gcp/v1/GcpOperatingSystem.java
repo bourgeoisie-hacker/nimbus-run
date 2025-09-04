@@ -10,11 +10,12 @@ import java.io.IOException;
 public enum GcpOperatingSystem {
   UBUNTU_20_04(OperatingSystem.UBUNTU_20_04, "2004", true),
   UBUNTU_22_04(OperatingSystem.UBUNTU_22_04, "2204", true),
-  UBUNTU_23_04(OperatingSystem.UBUNTU_23_04, "2204", false),
+  UBUNTU_23_04(OperatingSystem.UBUNTU_23_04, "2304", false),
   UBUNTU_24_04(OperatingSystem.UBUNTU_24_04, "2404", true),
   UBUNTU_25_04(OperatingSystem.UBUNTU_25_04, "2504", true),
   DEBIAN_11(OperatingSystem.DEBIAN_11, "11", true),
   DEBIAN_12(OperatingSystem.DEBIAN_12, "12", true),
+  DEBIAN_13(OperatingSystem.DEBIAN_13, "13", false),
   UNKNOWN(OperatingSystem.UNKNOWN, "", true);
 
   private final OperatingSystem operatingSystem;
@@ -43,7 +44,7 @@ public enum GcpOperatingSystem {
     return switch (this) {
       case UBUNTU_20_04, UBUNTU_22_04, UBUNTU_23_04, UBUNTU_24_04, UBUNTU_25_04 ->
           "^(ubuntu).*?(%s).*".formatted(this.version);
-      case DEBIAN_11, DEBIAN_12 -> "^(debian).*?(%s).*".formatted(this.version);
+      case DEBIAN_11, DEBIAN_12, DEBIAN_13 -> "^(debian).*?(%s).*".formatted(this.version);
       case UNKNOWN -> "";
     };
   }
@@ -52,7 +53,7 @@ public enum GcpOperatingSystem {
     return switch (this) {
       case UBUNTU_20_04, UBUNTU_22_04, UBUNTU_23_04, UBUNTU_24_04, UBUNTU_25_04 ->
           "ubuntu-os-cloud";
-      case DEBIAN_11, DEBIAN_12 -> "debian-cloud";
+      case DEBIAN_11, DEBIAN_12, DEBIAN_13 -> "debian-cloud";
       case UNKNOWN -> "";
     };
   }

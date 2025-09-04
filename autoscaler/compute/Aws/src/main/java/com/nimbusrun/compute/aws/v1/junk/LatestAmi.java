@@ -1,7 +1,8 @@
-package com.nimbusrun.compute.aws.v1;
+package com.nimbusrun.compute.aws.v1.junk;
 
 import com.nimbusrun.Utils;
 import com.nimbusrun.compute.ProcessorArchitecture;
+import com.nimbusrun.compute.aws.v1.AwsOperatingSystem;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;

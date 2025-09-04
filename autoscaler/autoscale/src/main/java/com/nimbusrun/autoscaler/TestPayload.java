@@ -22,7 +22,8 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 public class TestPayload {
 
   public static void main(String[] args) throws IOException {
-    sendPayloads("webhook-examples-mine/sends/aws/os");
+//    sendPayloads("webhook-examples-mine/sends/aws/os");
+    sendPayload(null);
   }
 
   public static void sendPayload(String filePath) throws IOException {

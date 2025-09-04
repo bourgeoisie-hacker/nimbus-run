@@ -180,6 +180,7 @@ actionPools:
 | `compute.gcp.defaultSettings.subnet`                 | Subnet path.                                                                                                     | `regions/us-east1/subnetworks/default` |
 | `compute.gcp.defaultSettings.vpc`                    | VPC path.                                                                                                        | `global/networks/default`              |
 | `compute.gcp.defaultSettings.zones`                  | List of zones for placement.                                                                                     | `[us-east1-b, us-east1-c, us-east1-d]` |
+| `compute.gcp.defaultSettings.publicIp`               | Determines if the instances are created with a public ip address                                                 | `false`                                |
 | `compute.gcp.defaultSettings.serviceAccountPath`     | Path to service account JSON (or uses default provider chain).                                                   | `/path/to/service-account.json`        |
 | `compute.gcp.defaultSettings.diskSettings.size`      | Disk size in GiB.                                                                                                | `20`                                   |
 | `compute.gcp.defaultSettings.instanceType`           | GCE machine type.                                                                                                | `e2-highcpu-4`                         |
