@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class ListSelfHostedRunners {
-    public int total_count;
-    public ArrayList<Runner> runners;
+
+  public int total_count;
+  public ArrayList<Runner> runners;
 }

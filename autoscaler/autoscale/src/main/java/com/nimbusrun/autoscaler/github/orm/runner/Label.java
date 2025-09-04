@@ -1,6 +1,5 @@
 package com.nimbusrun.autoscaler.github.orm.runner;
 
-import java.util.ArrayList;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,14 +9,15 @@ import lombok.NoArgsConstructor;
 Root root = om.readValue(myJsonString, Root.class); */
 @Data
 @NoArgsConstructor
-public class Label{
-    public int id;
-    public String name;
-    public String type;
+public class Label {
 
-    public Label(int id, String name, String type) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-    }
+  public int id;
+  public String name;
+  public String type;
+
+  public Label(int id, String name, String type) {
+    this.id = id;
+    this.name = name;
+    this.type = type;
+  }
 }

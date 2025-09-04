@@ -2,30 +2,32 @@ package com.nimbusrun.github;
 
 
 public enum WorkflowJobStatus {
-    COMPLETED("completed"),IN_PROGRESS("in_progress"),QUEUED("queued"),WAITING("waiting"), UNKNOWN("unknown");
-    private final String status;
-    WorkflowJobStatus(String status){
-        this.status = status;
-    }
+  COMPLETED("completed"), IN_PROGRESS("in_progress"), QUEUED("queued"), WAITING("waiting"), UNKNOWN(
+      "unknown");
+  private final String status;
 
-    public static WorkflowJobStatus fromString(String s){
+  WorkflowJobStatus(String status) {
+    this.status = status;
+  }
 
-        for(var w : WorkflowJobStatus.values()){
-            if(w.getStatus().equalsIgnoreCase(s)){
-                return w;
-            }
-        }
-        return UNKNOWN;
-    }
+  public static WorkflowJobStatus fromString(String s) {
 
-    public static boolean isActiveStatus(WorkflowJobStatus status){
-        return switch (status){
-            case QUEUED -> false;//UNKNOWN is treated as Active
-            default -> true;
-        };
+    for (var w : WorkflowJobStatus.values()) {
+      if (w.getStatus().equalsIgnoreCase(s)) {
+        return w;
+      }
     }
+    return UNKNOWN;
+  }
 
-    public String getStatus() {
-        return status;
-    }
+  public static boolean isActiveStatus(WorkflowJobStatus status) {
+    return switch (status) {
+      case QUEUED -> false;//UNKNOWN is treated as Active
+      default -> true;
+    };
+  }
+
+  public String getStatus() {
+    return status;
+  }
 }

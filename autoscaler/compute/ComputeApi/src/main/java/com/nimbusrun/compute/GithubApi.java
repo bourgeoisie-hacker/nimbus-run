@@ -6,13 +6,14 @@ import java.util.Optional;
 
 public interface GithubApi {
 
-    public Optional<String> generateRunnerToken();
-    public String getOrganization();
+  public Optional<String> generateRunnerToken();
 
-    public Integer getRunnerGroupId();
+  public String getOrganization();
 
-    public String getRunnerGroupName();
+  public Integer getRunnerGroupId();
 
-    public boolean isJobQueued(String runUrl);
+  public String getRunnerGroupName();
+
+  public boolean isJobQueued(String runUrl);
 
 }
