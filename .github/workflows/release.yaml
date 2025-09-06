@@ -107,6 +107,8 @@ jobs:
           body: ${{ steps.changelog.outputs.changes }}
           files: |
             nimbus-run-${{steps.tag_version.outputs.tag_version}}.tgz
+            autoscaler/target/autoscaler-gcp.jar
+            autoscaler/target/autoscaler-aws.jar
       - name: Pull Remote Changes
         run: |
           git stash

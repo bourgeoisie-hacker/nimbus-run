@@ -30,7 +30,6 @@ public class AwsConfig {
   private static final String INSTANCE = "instanceType";
   private static final String MAX_INSTANCE_COUNT = "maxInstanceCount";
   private static final String NAME = "name";
-  private static final String IS_NVME = "isNvme";
   private static final String KEY_PAIR_NAME = "keyPairName";
   private static final String ACTION_POOLS = "actionPools";
 
@@ -144,7 +143,6 @@ public class AwsConfig {
     private Integer maxInstanceCount;
     private Integer idleScaleDownInMinutes;
     private String credentialsProfile;
-    private Boolean nvme;
     private String subnet;
     private String securityGroup;
     private DiskSettings diskSettings;
@@ -160,7 +158,7 @@ public class AwsConfig {
           this.idleScaleDownInMinutes, isDefault);
     }
 
-
+    @JsonDeserialize
     public Optional<String> getCredentialsProfileOpt() {
       return Optional.ofNullable(this.credentialsProfile);
     }
@@ -217,13 +215,7 @@ public class AwsConfig {
       this.credentialsProfile = credentialsProfile;
     }
 
-    public Boolean getNvme() {
-      return nvme;
-    }
 
-    public void setNvme(Boolean nvme) {
-      this.nvme = nvme;
-    }
 
     public String getSubnet() {
       return subnet;

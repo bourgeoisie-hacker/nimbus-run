@@ -11,6 +11,7 @@ import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.compute.ProcessorArchitecture;
+import com.nimbusrun.compute.aws.v1.AwsConfig.DiskSettings;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -56,7 +57,7 @@ public class AWSComputeService extends Compute {
   private static final Integer DEFAULT_DISK_SIZE = 20;
   private final GithubApi githubService;
   private AwsConfig clientConfig;
-  private Map<String, AwsConfig.ActionPool> awsActionPool = new HashMap<>();
+  private Map<String, AwsConfig.ActionPool> awsActionPoolMap = new HashMap<>();
   private final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
   private final String APPLICATION_NAME_LABEL_KEY = "NimbusRun";
   private Map<String, Ec2Client> actionPoolToEc2Client = new HashMap<>();
@@ -78,7 +79,7 @@ public class AWSComputeService extends Compute {
   @Override
   public ListInstanceResponse listComputeInstances(ActionPool autoScalePool) {
     List<Instance> instanceIds = new ArrayList<>();
-    AwsConfig.ActionPool actionPool = this.awsActionPool.get(autoScalePool.getName());
+    AwsConfig.ActionPool actionPool = this.awsActionPoolMap.get(autoScalePool.getName());
     Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
     Filter notTerminatedFilter = Filter.builder().name("instance-state-name")
         .values(
@@ -128,9 +129,9 @@ public class AWSComputeService extends Compute {
   public Map<String, ListInstanceResponse> listAllComputeInstances() {
     Map<String, ListInstanceResponse> responseMap = new HashMap<>();
     try {
-      for (String actionPoolName : this.awsActionPool.keySet()) {
+      for (String actionPoolName : this.awsActionPoolMap.keySet()) {
         responseMap.put(actionPoolName,
-            listComputeInstances(this.awsActionPool.get(actionPoolName).toAutoScalerActionPool()));
+            listComputeInstances(this.awsActionPoolMap.get(actionPoolName).toAutoScalerActionPool()));
       }
     } catch (Exception e) {
     }
@@ -140,7 +141,7 @@ public class AWSComputeService extends Compute {
 
   @Override
   public boolean deleteCompute(DeleteInstanceRequest deleteInstanceRequest) {
-    AwsConfig.ActionPool actionPool = this.awsActionPool.get(
+    AwsConfig.ActionPool actionPool = this.awsActionPoolMap.get(
         deleteInstanceRequest.getActionPool().getName());
 
     try {
@@ -177,11 +178,12 @@ public class AWSComputeService extends Compute {
     actionPools.addAll(awsConfig.getActionPools());
     actionPools.add(awsConfig.getDefaultActionPool());
     validateActionPools(actionPools, errors, warnings);
+    setDefaultValues(actionPools);
     clientConfig = awsConfig;
-    this.awsActionPool = actionPools.stream()
+    this.awsActionPoolMap = actionPools.stream()
         .collect(Collectors.toMap(AwsConfig.ActionPool::getName, Function.identity(), (a, b) -> a));
     DEFAULT_INSTANCE_LABELS.put(APPLICATION_NAME_LABEL_KEY, autoScalerName);
-    generateEc2ClientPerActionPool(this.awsActionPool);
+    generateEc2ClientPerActionPool(this.awsActionPoolMap);
     return new ComputeConfigResponse(errors, warnings,
         actionPools.stream().map(AwsConfig.ActionPool::toAutoScalerActionPool).toList());
   }
@@ -269,6 +271,40 @@ public class AWSComputeService extends Compute {
     }
   }
 
+  public void setDefaultValues(List<AwsConfig.ActionPool> actionPools) {
+    actionPools.stream().forEach(ap -> {
+
+      if (ap.getArchitecture() == null) {
+        log.info("Action pool {} using default architecture value of {}", ap.getName(),
+            DEFAULT_PROCESSOR_ARCHITECTURE);
+        ap.setArchitecture(DEFAULT_PROCESSOR_ARCHITECTURE);
+      }
+
+      if (ap.getOs() == null) {
+        log.info("Action pool {} using default os  value of {}", ap.getName(),
+            DEFAULT_OPERATING_SYSTEM);
+        ap.setOs(DEFAULT_OPERATING_SYSTEM);
+      }
+
+      if (ap.getMaxInstanceCount() == null) {
+        log.info("Action pool {} using default maxInstanceCount value of {}", ap.getName(),
+            Constants.DEFAULT_MAX_INSTANCES);
+        ap.setMaxInstanceCount(Constants.DEFAULT_MAX_INSTANCES);
+      }
+      if (ap.getIdleScaleDownInMinutes() == null) {
+        log.info("Action pool {} using default idleScaleDownInMinutes value of {}", ap.getName(),
+            Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
+        ap.setIdleScaleDownInMinutes(Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
+      }
+      if (ap.getDiskSettings() == null || ap.getDiskSettings().getSize() == null) {
+        DiskSettings diskSettings = new DiskSettings();
+        diskSettings.setSize(DEFAULT_DISK_SIZE);
+        diskSettings.setType(DEFAULT_DISK_TYPE);
+        ap.setDiskSettings(diskSettings);
+      }
+
+    });
+  }
 
   private List<Tag> generateInstanceTags(String actionPoolName) {
     return generateInstanceTags(actionPoolName, null);
@@ -292,21 +328,16 @@ public class AWSComputeService extends Compute {
 
   @Override
   public boolean createCompute(ActionPool autoScalerActionPool) {
-    AwsConfig.ActionPool actionPool = this.awsActionPool.get(autoScalerActionPool.getName());
+    AwsConfig.ActionPool actionPool = this.awsActionPoolMap.get(autoScalerActionPool.getName());
 
     // Configure AWS client
     Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
 
     try {
-      ProcessorArchitecture architecture = Optional.ofNullable(actionPool.getArchitecture())
-          .orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
-      AwsOperatingSystem os = Optional.ofNullable(actionPool.getOs())
-          .orElse(DEFAULT_OPERATING_SYSTEM);
-      Region region = regionFromString(actionPool.getRegion()).get();
+      Region region = Region.of(actionPool.getRegion());
       // Set up instance parameters
-      String amiId = amiCache.get(actionPool,
-          (r) -> latestAmi(ec2, actionPool.getName(), architecture, os).orElse(
-              null)); // Ubuntu 24.04 LTS AMI ID for us-east-1
+      String amiId = amiCache.get(actionPool, (r) ->
+          latestAmi(ec2, actionPool).orElse(null));
       if (amiId == null) {
         log.error("Ubuntu AMI does not exist for region {}", actionPool.getRegion());
         return false;
@@ -320,13 +351,14 @@ public class AWSComputeService extends Compute {
       String instanceName = this.createInstanceName();
 
       // Generate the startup script
-      String startupScript = startUpScriptUbuntu(
+      String startupScript = startUpScript(
           runnerToken.get(),
           githubService.getRunnerGroupName(),
           autoScalerActionPool,
           instanceName,
           githubService.getOrganization(),
-          ProcessorArchitecture.X64
+          actionPool.getArchitecture(),
+          actionPool.getOs().getOperatingSystem()
       );
 
       // Encode the startup script in Base64
@@ -354,10 +386,8 @@ public class AWSComputeService extends Compute {
         runRequest.keyName(actionPool.getKeyPairNameOpt().get());
       }
       // Create block device mapping for root volume with specified size and type
-      int diskSize = Optional.ofNullable(actionPool.getDiskSettings())
-          .map(AwsConfig.DiskSettings::getSize).orElse(DEFAULT_DISK_SIZE);
-      String diskType = Optional.ofNullable(actionPool.getDiskSettings())
-          .map(AwsConfig.DiskSettings::getType).orElse(DEFAULT_DISK_TYPE);
+      int diskSize = actionPool.getDiskSettings().getSize();
+      String diskType = actionPool.getDiskSettings().getType();
       BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
           .deviceName("/dev/sda1") // Root device name for Ubuntu
           .ebs(EbsBlockDevice.builder()
@@ -393,9 +423,10 @@ public class AWSComputeService extends Compute {
     return type;
   }
 
-  public static Optional<String> latestAmi(Ec2Client ec2Client, String actionPoolName,
-      ProcessorArchitecture architecture, AwsOperatingSystem os) {
+  public static Optional<String> latestAmi(Ec2Client ec2Client, AwsConfig.ActionPool actionPool) {
     try {
+      AwsOperatingSystem os = actionPool.getOs();
+      ProcessorArchitecture architecture = actionPool.getArchitecture();
       DescribeImagesRequest request = DescribeImagesRequest.builder()
           .owners(os.gcpProviderProject()) // Canonical's owner ID. Company managing the images.
           .filters(
@@ -422,19 +453,23 @@ public class AWSComputeService extends Compute {
 
       if (!images.isEmpty()) {
         String latestAmiId = images.get(0).imageId();
-        log.info("Found ami %s for action pool %s".formatted(latestAmiId, actionPoolName));
+        log.info("Found ami %s for action pool %s".formatted(latestAmiId, actionPool.getName()));
         return Optional.of(latestAmiId);
       } else {
         log.warn("No Ubuntu AMIs found matching the criteria for action pool %s.".formatted(
-            actionPoolName));
+            actionPool.getName()));
 
       }
     } catch (Exception e) {
       Utils.excessiveErrorLog(
-          "Error finding latest Ubuntu AMI for action pool %s due to %s".formatted(actionPoolName,
+          "Error finding latest Ubuntu AMI for action pool %s due to %s".formatted(actionPool.getName(),
               e.getMessage()), e, log);
 
     }
     return Optional.empty();
+  }
+  @Override
+  public Map<String, Object> actionPoolToApiResponse() {
+    return this.awsActionPoolMap.keySet().stream().collect(Collectors.toMap(Function.identity(), i-> (Object) this.awsActionPoolMap.get(i)));
   }
 }

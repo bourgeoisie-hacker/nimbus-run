@@ -77,12 +77,11 @@ public abstract class Compute {
   }
 
   public String startUpScript(String runnerToken, String runnerGroup, ActionPool actionPool,
-      String runnerName, String organization, ProcessorArchitecture architecture,
-      OperatingSystemFamily operatingSystemFamily) {
-    if (operatingSystemFamily == OperatingSystemFamily.UBUNTU) {
+      String runnerName, String organization, ProcessorArchitecture architecture, OperatingSystem os) {
+    if (os.getFamily() == OperatingSystemFamily.UBUNTU) {
       return startUpScriptUbuntu(runnerToken, runnerGroup, actionPool, runnerName, organization,
           architecture);
-    } else if (operatingSystemFamily == OperatingSystemFamily.DEBIAN) {
+    } else if (os.getFamily() == OperatingSystemFamily.DEBIAN) {
       return startUpScriptDebian(runnerToken, runnerGroup, actionPool, runnerName, organization,
           architecture);
     }
@@ -241,5 +240,7 @@ public abstract class Compute {
                 archStr));
   }
 
-
+  public  Map<String, Object> actionPoolToApiResponse(){
+    return Map.of();
+  }
 }

@@ -1,5 +1,6 @@
 package com.nimbusrun.compute.gcp.v1;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -42,7 +43,7 @@ public class GCPConfig {
     setFromDefault(actionPool::getProjectId, defaults::getProjectId, actionPool::setProjectId);
     setFromDefault(actionPool::getSubnet, defaults::getSubnet, actionPool::setSubnet);
     setFromDefault(actionPool::getVpc, defaults::getVpc, actionPool::setVpc);
-    setFromDefault(actionPool::isPublicIp, defaults::isPublicIp, actionPool::setPublicIp);
+    setFromDefault(actionPool::getPublicIp, defaults::getPublicIp, actionPool::setPublicIp);
     setFromDefault(actionPool::getZones, defaults::getZones, actionPool::setZones);
     setFromDefault(actionPool::getServiceAccountPath, defaults::getServiceAccountPath,
         actionPool::setServiceAccountPath);
@@ -144,7 +145,7 @@ public class GCPConfig {
     private Boolean isNvme;
     private String subnet;
     private String vpc;
-    private boolean publicIp;
+    private Boolean publicIp;
     private List<String> zones;
     private DiskSettings diskSettings;
     @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
@@ -159,6 +160,7 @@ public class GCPConfig {
     }
 
 
+    @JsonIgnore
     public Optional<String> getServiceAccountPathOpt() {
       return Optional.ofNullable(this.serviceAccountPath);
     }
@@ -243,11 +245,11 @@ public class GCPConfig {
       this.vpc = vpc;
     }
 
-    public boolean isPublicIp() {
+    public Boolean getPublicIp() {
       return publicIp;
     }
 
-    public void setPublicIp(boolean publicIp) {
+    public void setPublicIp(Boolean publicIp) {
       this.publicIp = publicIp;
     }
 

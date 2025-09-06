@@ -100,6 +100,9 @@ compute:
       # The Central Processor Unit Architecture. Either x64 or ARM64. See compatibility matrix to see supported version.
       architecture:
 
+      #Determines if the instances are created with a public ip address
+      publicIp:
+
     # Default action pool (inherits all fields from defaultSettings)
     defaultActionPool:
       name:

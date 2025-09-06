@@ -31,6 +31,7 @@ import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.compute.ProcessorArchitecture;
 import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
+import com.nimbusrun.compute.gcp.v1.GCPConfig.DiskSettings;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -59,16 +60,18 @@ import org.yaml.snakeyaml.Yaml;
 public class GCPComputeService extends Compute {
 
   private static Logger log = LoggerFactory.getLogger(GCPComputeService.class);
-  private Map<String, GCPConfig.ActionPool> gcpActionPool;
+  private Map<String, GCPConfig.ActionPool> gcpActionPoolMap;
   private GCPConfig clientConfig;
   final Map<String, String> DEFAULT_INSTANCE_LABELS = new HashMap<>();
   private final String APPLICATION_NAME_LABEL_KEY = "nimbus-run";
   private final Cache<String, Map<String, RegionZones>> projectIdToRegionZones;
   private final Cache<String, Set<String>> projectIdZones;
-  private final Cache<String, String> latestUbuntuImage;
-  private final Integer DEFAULT_DISK_SIZE_GB = 20;
+  private final Cache<String, String> latestMachineImage;
+
+  private final boolean DEFAULT_IS_PUBLIC_IP = true;
   private final GcpOperatingSystem DEFAULT_OPERATING_SYSTEM = GcpOperatingSystem.UBUNTU_24_04;
   private final ProcessorArchitecture DEFAULT_PROCESSOR_ARCHITECTURE = ProcessorArchitecture.X64;
+  private final Integer DEFAULT_DISK_SIZE_GB = 20;
 
   private static class RegionZones {
 
@@ -101,7 +104,7 @@ public class GCPComputeService extends Compute {
         .maximumSize(1_000_000)
         .expireAfterWrite(Duration.ofDays(1))
         .build();
-    latestUbuntuImage = Caffeine.newBuilder()
+    latestMachineImage = Caffeine.newBuilder()
         .maximumSize(1_000_000)
         .expireAfterWrite(Duration.ofDays(1))
         .build();
@@ -135,7 +138,7 @@ public class GCPComputeService extends Compute {
   public boolean deleteCompute(DeleteInstanceRequest deleteInst) throws Exception {
     log.info("Deleting vm name: %s id: %s".formatted(deleteInst.getActionPool().getName(),
         deleteInst.getInstanceId()));
-    GCPConfig.ActionPool actionPool = this.gcpActionPool.get(deleteInst.getActionPool().getName());
+    GCPConfig.ActionPool actionPool = this.gcpActionPoolMap.get(deleteInst.getActionPool().getName());
 
     InstanceStaticInfo instanceStaticInfo;
     if (deleteInst.getExtraProperties() instanceof InstanceStaticInfo info) {
@@ -195,7 +198,7 @@ public class GCPComputeService extends Compute {
 
   @Override
   public ListInstanceResponse listComputeInstances(ActionPool pool) {
-    GCPConfig.ActionPool actionPool = this.gcpActionPool.get(pool.getName());
+    GCPConfig.ActionPool actionPool = this.gcpActionPoolMap.get(pool.getName());
     List<ListInstanceResponse.Instance> instances = new ArrayList<>();
     try (InstancesClient instancesClient = GCPClients.createInstancesClient(
         actionPool.getServiceAccountPathOpt())) {
@@ -234,9 +237,9 @@ public class GCPComputeService extends Compute {
   public Map<String, ListInstanceResponse> listAllComputeInstances() {
     Map<String, ListInstanceResponse> responseMap = new HashMap<>();
     try {
-      for (String actionPoolName : this.gcpActionPool.keySet()) {
+      for (String actionPoolName : this.gcpActionPoolMap.keySet()) {
         responseMap.put(actionPoolName,
-            listComputeInstances(this.gcpActionPool.get(actionPoolName).toAutoScalerActionPool()));
+            listComputeInstances(this.gcpActionPoolMap.get(actionPoolName).toAutoScalerActionPool()));
       }
     } catch (Exception e) {
       Utils.excessiveErrorLog("Failed to list all compute instances", e, log);
@@ -244,20 +247,12 @@ public class GCPComputeService extends Compute {
     return responseMap;
   }
 
-  public ProcessorArchitecture getProcessorArchitecture(GCPConfig.ActionPool actionPool){
-    return Optional.ofNullable(actionPool.getArchitecture())
-        .orElse(DEFAULT_PROCESSOR_ARCHITECTURE);
-  }
 
-  public GcpOperatingSystem getOperatingSystem(GCPConfig.ActionPool actionPool){
-    return Optional.ofNullable(actionPool.getOs())
-        .orElse(DEFAULT_OPERATING_SYSTEM);
-  }
   @Override
   public boolean createCompute(ActionPool autoscalerActionPool) {
     //TODO create a counter for when an instance is created
     String instanceName = createInstanceName();
-    GCPConfig.ActionPool actionPool = this.gcpActionPool.get(autoscalerActionPool.getName());
+    GCPConfig.ActionPool actionPool = this.gcpActionPoolMap.get(autoscalerActionPool.getName());
     try (InstancesClient instancesClient = GCPClients.createInstancesClient(
         actionPool.getServiceAccountPathOpt())) {
       Random random = new Random();
@@ -282,36 +277,31 @@ public class GCPComputeService extends Compute {
           .setInitializeParams(
               AttachedDiskInitializeParams.newBuilder()
                   .setSourceImage(sourceImage.get())
-                  .setDiskSizeGb(Optional.ofNullable(actionPool.getDiskSettings())
-                      .map(GCPConfig.DiskSettings::getSize).orElse(DEFAULT_DISK_SIZE_GB))
+                  .setDiskSizeGb(actionPool.getDiskSettings().getSize())
                   .build()
           )
           .setAutoDelete(true)
           .setBoot(true)
           .build();
 
-      // Create the Instance object with the relevant information.
-
-      GcpOperatingSystem os = getOperatingSystem(actionPool);
-      ProcessorArchitecture architecture = getProcessorArchitecture(actionPool);
-
       String startupScript = startUpScript(githubRunnerToken, this.githubApi.getRunnerGroupName(),
           autoscalerActionPool,
           instanceName,
           githubApi.getOrganization(),
-          architecture,
-          os.getOperatingSystem().getFamily());
+          actionPool.getArchitecture(),
+          actionPool.getOs().getOperatingSystem());
 
       Metadata md = Metadata.newBuilder()
           .addItems(Items.newBuilder().setKey("startup-script").setValue(startupScript).build())
           .build();
+
       Instance instance = Instance.newBuilder()
           .setName(instanceName)
           .addDisks(attachedDisk)
           .setMachineType("zones/%s/machineTypes/%s".formatted(zone, actionPool.getInstanceType()))
           .putAllLabels(labels)
           .addNetworkInterfaces(createNetworkInterface(actionPool.getVpc(), actionPool.getSubnet(),
-              actionPool.isPublicIp()))
+              actionPool.getPublicIp()))
           .mergeMetadata(md)
           .build();
 
@@ -350,14 +340,15 @@ public class GCPComputeService extends Compute {
     return false;
   }
 
-  private NetworkInterface createNetworkInterface(String vpcName, String subnetName, boolean publicIp) {
-    if(publicIp){
+  private NetworkInterface createNetworkInterface(String vpcName, String subnetName,
+      boolean publicIp) {
+    if (publicIp) {
       return NetworkInterface.newBuilder().setNetwork(vpcName).setNetwork(subnetName)
           .addAccessConfigs(AccessConfig.newBuilder().setType(
               AccessConfig.Type.ONE_TO_ONE_NAT.toString()).setName("External NAT").build())
           .setName("nic0").build();
     }
-    return  NetworkInterface.newBuilder().setNetwork(vpcName).setSubnetwork(subnetName).build();
+    return NetworkInterface.newBuilder().setNetwork(vpcName).setSubnetwork(subnetName).build();
   }
 
 
@@ -381,10 +372,12 @@ public class GCPComputeService extends Compute {
     actionPools.addAll(gcpConfig.getActionPools());
     actionPools.add(gcpConfig.getDefaultActionPool());
     validateActionPools(actionPools, errors, warnings);
+    setDefaultValues(actionPools);
     clientConfig = gcpConfig;
-    this.gcpActionPool = actionPools.stream()
+    this.gcpActionPoolMap = actionPools.stream()
         .collect(Collectors.toMap(GCPConfig.ActionPool::getName, Function.identity(), (a, b) -> a));
     DEFAULT_INSTANCE_LABELS.put(APPLICATION_NAME_LABEL_KEY, autoScalerName);
+
     return new ComputeConfigResponse(errors, warnings,
         actionPools.stream().map(GCPConfig.ActionPool::toAutoScalerActionPool).toList());
   }
@@ -481,6 +474,44 @@ public class GCPComputeService extends Compute {
     }
   }
 
+  public void setDefaultValues(List<GCPConfig.ActionPool> actionPools) {
+    actionPools.stream().forEach(ap -> {
+      if (ap.getPublicIp() == null) {
+        log.info("Action pool {} using default publicIp value of {}", ap.getName(),
+            DEFAULT_IS_PUBLIC_IP);
+        ap.setDefault(DEFAULT_IS_PUBLIC_IP);
+      }
+
+      if (ap.getArchitecture() == null) {
+        log.info("Action pool {} using default architecture value of {}", ap.getName(),
+            DEFAULT_PROCESSOR_ARCHITECTURE);
+        ap.setArchitecture(DEFAULT_PROCESSOR_ARCHITECTURE);
+      }
+
+      if (ap.getOs() == null) {
+        log.info("Action pool {} using default os  value of {}", ap.getName(),
+            DEFAULT_OPERATING_SYSTEM);
+        ap.setOs(DEFAULT_OPERATING_SYSTEM);
+      }
+
+      if (ap.getMaxInstanceCount() == null) {
+        log.info("Action pool {} using default maxInstanceCount value of {}", ap.getName(),
+            Constants.DEFAULT_MAX_INSTANCES);
+        ap.setMaxInstanceCount(Constants.DEFAULT_MAX_INSTANCES);
+      }
+      if(ap.getIdleScaleDownInMinutes() == null){
+        log.info("Action pool {} using default idleScaleDownInMinutes value of {}", ap.getName(), Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
+        ap.setIdleScaleDownInMinutes(Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
+      }
+
+      if (ap.getDiskSettings() == null || ap.getDiskSettings().getSize() == null) {
+        DiskSettings diskSettings = new DiskSettings();
+        diskSettings.setSize(DEFAULT_DISK_SIZE_GB);
+        ap.setDiskSettings(diskSettings);
+      }
+
+    });
+  }
 
   public boolean regionExists(GCPConfig.ActionPool actionPool, String region) {
     try {
@@ -543,10 +574,11 @@ public class GCPComputeService extends Compute {
 
   public Optional<String> cacheLatestImageVersion(GCPConfig.ActionPool actionPool) {
     try {
-      return Optional.ofNullable(latestUbuntuImage.get(actionPool.getProjectId(),
-          (projectId) -> latestMachineImage(getProcessorArchitecture(actionPool), getOperatingSystem(actionPool))));
+      return Optional.ofNullable(latestMachineImage.get(actionPool.getProjectId(),
+          (projectId) -> latestMachineImage(actionPool)));
     } catch (NullPointerException e) {
-      Utils.excessiveErrorLog("Error when fetching latest image due to %s".formatted(e.getMessage()),e,log);
+      Utils.excessiveErrorLog(
+          "Error when fetching latest image due to %s".formatted(e.getMessage()), e, log);
     }
     return Optional.empty();
   }
@@ -560,7 +592,9 @@ public class GCPComputeService extends Compute {
     return arch;
   }
 
-  public static String latestMachineImage(ProcessorArchitecture architecture, GcpOperatingSystem operatingSystem) {
+  public static String latestMachineImage(GCPConfig.ActionPool actionPool) {
+    ProcessorArchitecture architecture = actionPool.getArchitecture();
+    GcpOperatingSystem operatingSystem = actionPool.getOs();
     String project = operatingSystem.gcpProviderProject();
     String arch = determineArch(architecture);
     String templ = operatingSystem.createRegex();
@@ -582,7 +616,9 @@ public class GCPComputeService extends Compute {
       }
 
     } catch (IOException e) {
-            Utils.excessiveErrorLog("Failed to query for latest image for action pool due to %s".formatted( e.getMessage()), e, log);
+      Utils.excessiveErrorLog(
+          "Failed to query for latest image for action pool due to %s".formatted(e.getMessage()), e,
+          log);
     }
     return null;
   }
@@ -591,5 +627,8 @@ public class GCPComputeService extends Compute {
     return zone.substring(zone.lastIndexOf("/") + 1);
   }
 
-
+  @Override
+  public Map<String, Object> actionPoolToApiResponse() {
+    return this.gcpActionPoolMap.keySet().stream().collect(Collectors.toMap(Function.identity(), i-> (Object) this.gcpActionPoolMap.get(i)));
+  }
 }

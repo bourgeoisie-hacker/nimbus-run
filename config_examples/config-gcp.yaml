@@ -72,7 +72,7 @@ compute:
 
     # Determines if the instances should be created with a public ip address.
     # If your subnet doesn't have a natgateway then you probably want this to be true.
-    # It defaults to false
+    # It defaults to true
     publicIp: true
 
     # Available zones for instance placement (automatically balances across these)
