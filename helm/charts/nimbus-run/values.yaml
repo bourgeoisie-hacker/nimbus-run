@@ -141,7 +141,7 @@ autoscaler:
       replayFailedDeliverOnStartup: true
     retryPolicy:
       # Maximum minutes a job may stay in “Queued” state before being retried
-      # Once exceeded, the job is sent to the retry topic
+      # Once exceeded, the job will be retried
       maxJobInQueuedInMinutes:
 
       # Minimum minutes to wait between retry attempts for the same job

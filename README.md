@@ -164,10 +164,6 @@ services:
       - "8080:8080"
     volumes:
       - "./config.yaml:/opt/config.yaml"
-    depends_on:
-      init-topics:
-        condition: service_completed_successfully
-
 networks:
   default:
     name: nimbus_run
