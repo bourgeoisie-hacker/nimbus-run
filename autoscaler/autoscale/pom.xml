@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>0.3.10</version>
+        <version>0.3.11</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>com.nimbusrun</groupId>
