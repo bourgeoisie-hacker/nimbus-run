@@ -61,8 +61,8 @@ jobs:
           cache: 'maven'
       - name: build
         run: |
-          mvn install -Paws -DskipTests
-          mvn install -Pgcp -DskipTests
+          mvn install -Paws
+          mvn install -Pgcp
         working-directory: autoscaler
       - name: Tag Version
         id: tag_version
