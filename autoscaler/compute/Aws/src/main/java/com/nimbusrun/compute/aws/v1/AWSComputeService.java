@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.ec2.model.DescribeImagesRequest;
 import software.amazon.awssdk.services.ec2.model.DescribeInstancesRequest;
 import software.amazon.awssdk.services.ec2.model.DescribeInstancesResponse;
 import software.amazon.awssdk.services.ec2.model.EbsBlockDevice;
+import software.amazon.awssdk.services.ec2.model.EbsBlockDevice.Builder;
 import software.amazon.awssdk.services.ec2.model.Ec2Exception;
 import software.amazon.awssdk.services.ec2.model.Filter;
 import software.amazon.awssdk.services.ec2.model.Image;
@@ -247,7 +248,7 @@ public class AWSComputeService extends Compute {
             actionPool.getInstanceType()));
       }
       if (actionPool.getMaxInstanceCount() == null) {
-        errors.add(
+        warnings.add(
             "Action Pool %s not configured with maxInstanceCount. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
@@ -296,11 +297,18 @@ public class AWSComputeService extends Compute {
             Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
         ap.setIdleScaleDownInMinutes(Constants.DEFAULT_INSTANCE_IDLE_TIME_IN_MINUTES);
       }
-      if (ap.getDiskSettings() == null || ap.getDiskSettings().getSize() == null) {
+      if (ap.getDiskSettings() == null ) {
         DiskSettings diskSettings = new DiskSettings();
         diskSettings.setSize(DEFAULT_DISK_SIZE);
         diskSettings.setType(DEFAULT_DISK_TYPE);
         ap.setDiskSettings(diskSettings);
+      }else {
+        if (ap.getDiskSettings().getSize() == null){
+          ap.getDiskSettings().setSize(DEFAULT_DISK_SIZE);
+        }
+        if(ap.getDiskSettings().getType() == null){
+          ap.getDiskSettings().setType(DEFAULT_DISK_TYPE);
+        }
       }
 
     });
@@ -388,13 +396,17 @@ public class AWSComputeService extends Compute {
       // Create block device mapping for root volume with specified size and type
       int diskSize = actionPool.getDiskSettings().getSize();
       String diskType = actionPool.getDiskSettings().getType();
+      Builder ebs = EbsBlockDevice.builder()
+          .volumeSize(diskSize)
+          .volumeType(VolumeType.fromValue(diskType))
+          .deleteOnTermination(true);
+      if(actionPool.getDiskSettings().getIops().isPresent()){
+        ebs.iops(actionPool.getDiskSettings().getIops().get());
+      }
+
       BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
           .deviceName("/dev/sda1") // Root device name for Ubuntu
-          .ebs(EbsBlockDevice.builder()
-              .volumeSize(diskSize)
-              .volumeType(VolumeType.fromValue(diskType))
-              .deleteOnTermination(true)
-              .build())
+          .ebs(ebs.build())
           .build();
       runRequest.blockDeviceMappings(rootVolume);
 

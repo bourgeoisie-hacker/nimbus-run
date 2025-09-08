@@ -79,6 +79,9 @@ compute:
       # Disk size in GiB
       size: 20
 
+      #The number of iops for the attached disk.
+      iops: 3000
+
     # EC2 instance type for GitHub runners
     instanceType: t3.medium
 
@@ -86,7 +89,7 @@ compute:
     maxInstanceCount: 10
 
     # Name of the EC2 key pair to inject for SSH access
-    keyPairName: Testers
+    keyPairName: keypair
 
     # The operating system to be used. See compatibility matrix to see supported version
     os: ubuntu22.04

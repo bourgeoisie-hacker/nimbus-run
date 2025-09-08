@@ -48,7 +48,7 @@ compute:
         size: 20                        # Disk size in GiB
       instanceType: t3.medium           # Instance type
       maxInstanceCount: 10              # Max instances (0 = unlimited)
-      keyPairName: Testers              # SSH key pair name
+      keyPairName: keypair              # SSH key pair name
 
     defaultActionPool:
       name: megan

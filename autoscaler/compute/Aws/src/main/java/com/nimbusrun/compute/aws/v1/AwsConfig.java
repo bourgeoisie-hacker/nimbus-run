@@ -118,6 +118,7 @@ public class AwsConfig {
 
     private String type;
     private Integer size;
+    private Integer iops;
 
     public String getType() {
       return type;
@@ -133,6 +134,14 @@ public class AwsConfig {
 
     public void setSize(Integer size) {
       this.size = size;
+    }
+
+    public Optional<Integer> getIops() {
+      return Optional.ofNullable(iops);
+    }
+
+    public void setIops(Integer iops) {
+      this.iops = iops;
     }
   }
 

@@ -19,7 +19,7 @@ public class YamlLoader {
           size: "20" # in gigs
         instanceType: t3.medium
         maxInstanceCount: 10 # <--no max
-        keyPairName: Testers
+        keyPairName: keypair
       defaultActionPool:
         name: defaultPool
       actionPools:
