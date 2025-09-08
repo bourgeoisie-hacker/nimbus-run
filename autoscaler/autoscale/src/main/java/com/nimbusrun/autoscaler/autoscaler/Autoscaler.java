@@ -399,13 +399,13 @@ public class Autoscaler implements WebhookReceiver {
           ActionPool finalPool = pool;
           UpscaleRequest finalUpscaleRequest = upscaleRequest;
           numberOfInstances.incrementAndGet();
-
           this.threadPerTasks.execute(() -> {
             try {
               log.info("Attempting to make instance for action pool: {}", finalPool.getName());
               boolean successful = compute.createCompute(finalPool);
               if (successful) {
                 metricsContainer.instanceCreatedTotal(finalPool.getName(), true);
+                metricsContainer.repositoryUpscaleTotal(finalPool.getName(), finalUpscaleRequest.getGithubActionJob().getRepositoryFullName());
                 githubRunnerIdUpscaledCache.put(finalUpscaleRequest.getWorkflowJobId(),
                     new AtomicInteger(0));
               } else {
@@ -596,7 +596,7 @@ public class Autoscaler implements WebhookReceiver {
       log.info("Received action pool request for {} and runner group: {}, run_url: {}",
           actionPool.getName(), this.githubService.getRunnerGroupName(), gj.getHtmlUrl());
 
-      return receivedRequests.add(new UpscaleRequest(actionPool, gj.getId()));
+      return receivedRequests.add(new UpscaleRequest(actionPool, gj));
     }
     return false;
   }
@@ -644,11 +644,11 @@ public class Autoscaler implements WebhookReceiver {
     @Getter
     private UpScaleReason upScaleReason;
     @Getter
-    private final String workflowJobId;
+    private GithubActionJob githubActionJob;
     private final ActionPool actionPool;
 
-    public UpscaleRequest(ActionPool actionPool, String workflowJobId) {
-      this.workflowJobId = workflowJobId;
+    public UpscaleRequest(ActionPool actionPool, GithubActionJob gj) {
+      this.githubActionJob = gj;
       this.retryPoolFull = 0;
       this.retryCreateFailed = 0;
       this.actionPool = actionPool;
@@ -666,7 +666,9 @@ public class Autoscaler implements WebhookReceiver {
       return this;
     }
 
-
+    public String getWorkflowJobId() {
+      return githubActionJob.getId();
+    }
   }
 
   public record RunnerNameId(String name, String id) {

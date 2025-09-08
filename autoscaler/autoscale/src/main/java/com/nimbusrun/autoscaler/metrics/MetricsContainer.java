@@ -25,6 +25,7 @@ public class MetricsContainer {
   public static String INVALID_ACTION_POOL_TOTAL = "invalid_action_pool_total";
   public static String INVALID_WORKFLOW_JOB_LABEL_TOTAL = "invalid_workflow_job_label_total";
   public static String ACTION_POOL_PROCESS_TIME_TOTAL = "action_pool_process_time_total";
+  public static String REPOSITORY_UPSCALE_TOTAL = "repository_upscale_total";
   /*TODO
       - counter user trigger a workflow_run
       - counter repository triggering workflow_run
@@ -96,7 +97,15 @@ public class MetricsContainer {
   public void instanceDeletedTotal(String actionPoolName, boolean success) {
     instanceOperations(actionPoolName, success, DELETE_OPERATION);
   }
+  public void repositoryUpscaleTotal(String actionPoolName, String repositoryName){
+    List<Tag> tags = new ArrayList<>();
+    tags.add(Tag.of(POOL_NAME_TAG, actionPoolName));
+    tags.add(Tag.of(REPOSITORY_NAME_TAG, repositoryName));
+    Counter.builder(REPOSITORY_UPSCALE_TOTAL).description("""
+        Tracks the total number of times a repository has requested an action pool to process a workflow job""")
+        .tags(tags).register(meterRegistry).increment();
 
+  }
   public void actionPoolProcessTime(String actionPoolName, long processTime){
     List<Tag> tags = new ArrayList<>();
     tags.add(Tag.of(POOL_NAME_TAG, actionPoolName));
