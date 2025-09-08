@@ -1,9 +1,12 @@
 package com.nimbusrun.compute.gcp.v1;
 
 import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.nimbusrun.compute.OperatingSystem;
 import java.io.IOException;
 
@@ -74,6 +77,14 @@ public enum GcpOperatingSystem {
         DeserializationContext deserializationContext) throws IOException, JacksonException {
       String dateString = jsonParser.getText(); // Assuming date is a simple string in JSON
       return GcpOperatingSystem.fromYaml(dateString);
+    }
+  }
+  public static class Serializer extends JsonSerializer<GcpOperatingSystem> {
+
+    @Override
+    public void serialize(GcpOperatingSystem gcpOperatingSystem, JsonGenerator jsonGenerator,
+        SerializerProvider serializerProvider) throws IOException {
+      jsonGenerator.writeString(gcpOperatingSystem.getOperatingSystem().getShortName());
     }
   }
 }

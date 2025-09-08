@@ -20,7 +20,7 @@ import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.ListInstanceResponse;
 import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
-import com.nimbusrun.github.WorkflowJobStatus;
+import com.nimbusrun.github.WorkflowJobAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +69,7 @@ public class AutoscalerTest {
   public void testReceive_withQueuedJobAndMatchingActionPool_shouldAddToQueue() {
     // Arrange
     GithubActionJob job = mock(GithubActionJob.class);
-    when(job.getStatus()).thenReturn(WorkflowJobStatus.QUEUED);
+    when(job.getAction()).thenReturn(WorkflowJobAction.QUEUED);
     when(job.getActionGroupName()).thenReturn(Optional.of("test-group"));
     when(job.getActionPoolName()).thenReturn(Optional.of("test-pool"));
     when(job.getId()).thenReturn("job-123");
@@ -88,7 +88,7 @@ public class AutoscalerTest {
   public void testReceive_withNonQueuedJob_shouldReturnFalse() {
     // Arrange
     GithubActionJob job = mock(GithubActionJob.class);
-    when(job.getStatus()).thenReturn(WorkflowJobStatus.COMPLETED);
+    when(job.getAction()).thenReturn(WorkflowJobAction.COMPLETED);
 
     // Act
     boolean result = autoscaler.receive(job);
@@ -103,7 +103,7 @@ public class AutoscalerTest {
   public void testReceive_withMismatchedRunnerGroup_shouldReturnFalse() {
     // Arrange
     GithubActionJob job = mock(GithubActionJob.class);
-    when(job.getStatus()).thenReturn(WorkflowJobStatus.QUEUED);
+    when(job.getAction()).thenReturn(WorkflowJobAction.QUEUED);
     when(job.getActionGroupName()).thenReturn(Optional.of("different-group"));
     when(githubService.getRunnerGroupName()).thenReturn("test-group");
 
@@ -120,7 +120,7 @@ public class AutoscalerTest {
   public void testReceive_withMissingActionPool_shouldReturnFalse() {
     // Arrange
     GithubActionJob job = mock(GithubActionJob.class);
-    when(job.getStatus()).thenReturn(WorkflowJobStatus.QUEUED);
+    when(job.getAction()).thenReturn(WorkflowJobAction.QUEUED);
     when(job.getActionGroupName()).thenReturn(Optional.of("test-group"));
     when(job.getActionPoolName()).thenReturn(Optional.of("non-existent-pool"));
     when(githubService.getRunnerGroupName()).thenReturn("test-group");

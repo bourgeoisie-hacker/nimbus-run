@@ -5,7 +5,7 @@ import com.nimbusrun.autoscaler.autoscaler.ValidWorkFlowJob;
 import com.nimbusrun.compute.ActionPool;
 import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
-import com.nimbusrun.github.WorkflowJobStatus;
+import com.nimbusrun.github.WorkflowJobAction;
 import com.nimbusrun.webhook.WebhookReceiver;
 import java.time.Duration;
 import java.time.Instant;
@@ -91,7 +91,7 @@ public class RetryService implements WebhookReceiver {
       for (WorkflowJobWatcher w : watchersToRetry) {
         try {
           Optional<GithubActionJob> opt = w.getGithubActionJobs().stream()
-              .filter(gj -> gj.getStatus() == WorkflowJobStatus.QUEUED).findFirst();
+              .filter(gj -> gj.getAction() == WorkflowJobAction.QUEUED).findFirst();
           if (opt.isPresent()) {
             long minutesSinceStart = TimeUnit.MILLISECONDS.toMinutes(
                 System.currentTimeMillis() - opt.get().getStartedAt());
@@ -119,9 +119,9 @@ public class RetryService implements WebhookReceiver {
 
   public boolean safeToRetry(WorkflowJobWatcher watcher) {
     boolean hasQueued = watcher.getGithubActionJobs().stream()
-        .anyMatch(gj -> WorkflowJobStatus.QUEUED == gj.getStatus());
+        .anyMatch(gj -> WorkflowJobAction.QUEUED == gj.getAction());
     long startedOperations = watcher.getGithubActionJobs().stream()
-        .filter(gj -> WorkflowJobStatus.isActiveStatus(gj.getStatus())).count();
+        .filter(gj -> WorkflowJobAction.isActiveStatus(gj.getAction())).count();
     return hasQueued && startedOperations == 0;
   }
 

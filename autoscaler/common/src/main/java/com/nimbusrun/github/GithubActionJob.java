@@ -4,6 +4,7 @@ package com.nimbusrun.github;
 import com.nimbusrun.Constants;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -11,11 +12,11 @@ import java.util.function.UnaryOperator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class GithubActionJob implements Comparable<GithubActionJob> {
+public class GithubActionJob implements Comparable<GithubActionJob>, Comparator<GithubActionJob> {
 
   private final String id;
   private final String runId;
-  private final WorkflowJobStatus status;
+  private final WorkflowJobAction action;
   private final String workflowName;
   private final String htmlUrl;
   private final String name;
@@ -23,7 +24,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
   private final Long startedAt;
   private final Long completedAt;
   private final String runUrl;
-  private final String runHtmlUrl;
 
   private final List<String> labels;
   private final List<String> invalidLabels;
@@ -32,13 +32,15 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
   private final String repositoryFullName;
   private final String jsonStr;
 
-  public GithubActionJob(String id, String runId, WorkflowJobStatus status, String workflowName,
+  public GithubActionJob(String id, String runId, WorkflowJobAction action, String workflowName,
       String htmlUrl, String name, String conclusion, Long startedAt, Long completedAt,
-      String runUrl, String runHtmlUrl, List<String> labels, List<String> invalidLabels,
-      String actionPoolName, String actionGroupName, String repositoryFullName, String jsonStr) {
+      String runUrl,
+      List<String> labels, List<String> invalidLabels, String actionPoolName,
+      String actionGroupName,
+      String repositoryFullName, String jsonStr) {
     this.id = id;
     this.runId = runId;
-    this.status = status;
+    this.action = action;
     this.workflowName = workflowName;
     this.htmlUrl = htmlUrl;
     this.name = name;
@@ -46,7 +48,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     this.startedAt = startedAt;
     this.completedAt = completedAt;
     this.runUrl = runUrl;
-    this.runHtmlUrl = runHtmlUrl;
     this.labels = labels;
     this.invalidLabels = invalidLabels;
     this.actionPoolName = actionPoolName;
@@ -81,7 +82,7 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     };
     String id = jobGetStr.apply("id");
     String runId = jobGetStr.apply("run_id");
-    WorkflowJobStatus status = WorkflowJobStatus.fromString(jobGetStr.apply("status"));
+    WorkflowJobAction status = WorkflowJobAction.fromString(object.getString("action"));
     String htmlUrl = jobGetStr.apply("html_url");
     String name = jobGetStr.apply("name");
     String workflowName = jobGetStr.apply("workflow_name");
@@ -102,7 +103,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     }).orElse(null);
     String repositoryName = repoGetStr.apply("full_name");
     String runUrl = job.getString("run_url");
-    String runHtmlUrl = job.getString("html_url");
     JSONArray labels = job.getJSONArray("labels");
     List<String> labelList = new ArrayList<>();
     String actionGroupName = null;
@@ -123,12 +123,11 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
       }
     }
 
-    return new GithubActionJobBuilder().withId(id).withRunId(runId).withStatus(status)
+    return new GithubActionJobBuilder().withId(id).withRunId(runId).withAction(status)
         .withHtmlUrl(htmlUrl).withName(name).withConclusion(conclusion).withStartedAt(startedAt)
         .withCompletedAt(completedAt)
         .withWorkflowName(workflowName)
         .withRunUrl(runUrl)
-        .withRunHtmlUrl(runHtmlUrl)
         .withLabels(labelList)
         .withInvalidLabels(invalidLabels)
         .withActionGroupName(actionGroupName)
@@ -151,6 +150,22 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     return Optional.empty();
   }
 
+  @Override
+  public int compareTo(GithubActionJob o) {
+    return this.compare(this, o);
+  }
+
+  @Override
+  public int compare(GithubActionJob o1, GithubActionJob o2) {
+    int w1 = Optional.ofNullable(o1).map(o->o.getAction().getOrder() ).orElse(5555);
+    int w2 = Optional.ofNullable(o2).map(o->o.getAction().getOrder() ).orElse(5555);
+    return w1-w2;
+  }
+
+  @Override
+  public Comparator<GithubActionJob> thenComparing(Comparator<? super GithubActionJob> other) {
+    return Comparator.super.thenComparing(other);
+  }
 
   @Override
   public boolean equals(Object object) {
@@ -158,7 +173,7 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
       return false;
     }
     GithubActionJob that = (GithubActionJob) object;
-    return Objects.equals(id, that.id) && Objects.equals(runId, that.runId);
+    return Objects.equals(id, that.id) && Objects.equals(runId, that.runId) && Objects.equals(action, that.action);
   }
 
   @Override
@@ -166,14 +181,11 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     return Objects.hash(id, runId);
   }
 
-  @Override
-  public int compareTo(GithubActionJob o) {
-    return this.id.compareTo(o.getId());
-  }
+
 
   public String simpleDescription() {
     return "id: %s, run_id: %s, repository_name: %s, run_html_url: %s".formatted(this.id,
-        this.runId, this.repositoryFullName, this.runHtmlUrl);
+        this.runId, this.repositoryFullName, this.htmlUrl);
   }
 
   public String getId() {
@@ -184,8 +196,8 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     return runId;
   }
 
-  public WorkflowJobStatus getStatus() {
-    return status;
+  public WorkflowJobAction getAction() {
+    return action;
   }
 
   public String getHtmlUrl() {
@@ -220,9 +232,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     return runUrl;
   }
 
-  public String getRunHtmlUrl() {
-    return runHtmlUrl;
-  }
 
   public List<String> getLabels() {
     return labels;
@@ -250,7 +259,7 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
 
     private String id;
     private String runId;
-    private WorkflowJobStatus status;
+    private WorkflowJobAction action;
     private String workflowName;
     private String htmlUrl;
     private String name;
@@ -258,7 +267,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     private Long startedAt;
     private Long completedAt;
     private String runUrl;
-    private String runHtmlUrl;
     private List<String> labels;
     private List<String> invalidLabels;
     private String actionPoolName;
@@ -283,8 +291,8 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
       return this;
     }
 
-    public GithubActionJobBuilder withStatus(WorkflowJobStatus status) {
-      this.status = status;
+    public GithubActionJobBuilder withAction(WorkflowJobAction action) {
+      this.action = action;
       return this;
     }
 
@@ -323,11 +331,6 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
       return this;
     }
 
-    public GithubActionJobBuilder withRunHtmlUrl(String runHtmlUrl) {
-      this.runHtmlUrl = runHtmlUrl;
-      return this;
-    }
-
     public GithubActionJobBuilder withLabels(List<String> labels) {
       this.labels = labels;
       return this;
@@ -359,9 +362,9 @@ public class GithubActionJob implements Comparable<GithubActionJob> {
     }
 
     public GithubActionJob build() {
-      return new GithubActionJob(id, runId, status, workflowName, htmlUrl, name, conclusion,
-          startedAt, completedAt, runUrl, runHtmlUrl, labels, invalidLabels, actionPoolName,
-          actionGroupName, repositoryFullName, jsonStr);
+      return new GithubActionJob(id, runId, action, workflowName, htmlUrl, name, conclusion,
+          startedAt, completedAt, runUrl, labels, invalidLabels, actionPoolName, actionGroupName,
+          repositoryFullName, jsonStr);
     }
   }
 }

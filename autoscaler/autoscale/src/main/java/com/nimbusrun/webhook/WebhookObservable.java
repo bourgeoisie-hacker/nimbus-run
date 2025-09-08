@@ -3,6 +3,7 @@ package com.nimbusrun.webhook;
 import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
 import com.nimbusrun.github.GithubActionJob;
+import com.nimbusrun.github.GithubActionRun;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,13 +19,14 @@ import org.springframework.stereotype.Service;
 public class WebhookObservable {
 
   private final BlockingDeque<GithubActionJob> githubActionJobs = new LinkedBlockingDeque<>();
-  private final BlockingDeque<String> githubActionRuns = new LinkedBlockingDeque<>();
+  private final BlockingDeque<GithubActionRun> githubActionRuns = new LinkedBlockingDeque<>();
   private final ApplicationContext context;
   private final ExecutorService webhookProcessors = Executors.newFixedThreadPool(2);
 
   public WebhookObservable(ApplicationContext context) {
     this.context = context;
     webhookProcessors.execute(this::processGithubJobs);
+    webhookProcessors.execute(this::processGithubRuns);
   }
 
   @VisibleForTesting
@@ -49,6 +51,28 @@ public class WebhookObservable {
       }
     }
   }
+  @VisibleForTesting
+  private boolean processGithubRuns() {
+    while (true) {
+      try {
+        GithubActionRun gr;
+        while ((gr = this.githubActionRuns.poll(1, TimeUnit.MINUTES)) != null) {
+          log.debug("Evaluating Github Action Workflow Job for further processing %s".formatted(
+              gr.simpleDescription()));
+          for (WebhookReceiver receiver : context.getBeansOfType(WebhookReceiver.class).values()) {
+            try {
+              receiver.receive(gr);
+            } catch (Exception e) {
+              log.error("Failed to to send github run payload to receiver %s".formatted(
+                  receiver.receiverName()), e);
+            }
+          }
+        }
+      } catch (Exception e) {
+        log.error("Failed to to send github run payload to all receivers");
+      }
+    }
+  }
 
   /**
    * Pass off the load to a list for later processing so that the http connection with github can be
@@ -65,7 +89,7 @@ public class WebhookObservable {
       if (json.has("workflow_job")) {
         githubActionJobs.offer(GithubActionJob.fromJson(json));
       } else if (json.has("workflow_run")) {
-        //TODO as part of the Admin portal
+        githubActionRuns.offer(GithubActionRun.fromJson(json));
       } else {
         log.warn("Received message is not a workflow job or workflow run event");
       }

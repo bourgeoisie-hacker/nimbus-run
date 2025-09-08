@@ -4,6 +4,7 @@ package com.nimbusrun.compute.aws.v1;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.nimbusrun.Utils;
 import com.nimbusrun.compute.ProcessorArchitecture;
 import java.util.List;
@@ -150,6 +151,7 @@ public class AwsConfig {
     @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
     private ProcessorArchitecture architecture;
     @JsonDeserialize(using = AwsOperatingSystem.Deserialize.class)
+    @JsonSerialize(using = AwsOperatingSystem.Serializer.class)
     private AwsOperatingSystem os;
     private String keyPairName;
 

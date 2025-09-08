@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.nimbusrun.Utils;
 import com.nimbusrun.compute.ProcessorArchitecture;
 import java.util.List;
@@ -142,7 +143,6 @@ public class GCPConfig {
     private Integer maxInstanceCount;
     private Integer idleScaleDownInMinutes;
     private String serviceAccountPath;
-    private Boolean isNvme;
     private String subnet;
     private String vpc;
     private Boolean publicIp;
@@ -151,6 +151,7 @@ public class GCPConfig {
     @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
     private ProcessorArchitecture architecture;
     @JsonDeserialize(using = GcpOperatingSystem.Deserialize.class)
+    @JsonSerialize(using = GcpOperatingSystem.Serializer.class)
     private GcpOperatingSystem os;
     private boolean isDefault;
 
@@ -219,14 +220,6 @@ public class GCPConfig {
 
     public void setServiceAccountPath(String serviceAccountPath) {
       this.serviceAccountPath = serviceAccountPath;
-    }
-
-    public Boolean getNvme() {
-      return isNvme;
-    }
-
-    public void setNvme(Boolean nvme) {
-      isNvme = nvme;
     }
 
     public String getSubnet() {

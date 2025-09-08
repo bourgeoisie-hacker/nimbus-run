@@ -1,9 +1,12 @@
 package com.nimbusrun.compute.aws.v1;
 
 import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.nimbusrun.compute.OperatingSystem;
 import com.nimbusrun.compute.ProcessorArchitecture;
 import java.io.IOException;
@@ -82,6 +85,15 @@ public enum AwsOperatingSystem {
         DeserializationContext deserializationContext) throws IOException, JacksonException {
       String dateString = jsonParser.getText(); // Assuming date is a simple string in JSON
       return AwsOperatingSystem.fromYaml(dateString);
+    }
+  }
+
+  public static class Serializer extends JsonSerializer<AwsOperatingSystem> {
+
+    @Override
+    public void serialize(AwsOperatingSystem awsOperatingSystem, JsonGenerator jsonGenerator,
+        SerializerProvider serializerProvider) throws IOException {
+      jsonGenerator.writeString(awsOperatingSystem.getOperatingSystem().getShortName());
     }
   }
 }

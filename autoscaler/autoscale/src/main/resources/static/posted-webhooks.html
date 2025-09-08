@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Posted Webhooks – Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --card: #10161f;
+      --card-2: #0e141b;
+      --text: #e8eef6;
+      --muted: #9fb3c8;
+      --accent: #6ea8fe;
+      --border: #1d2a39;
+      --good: #21c074;
+      --warn: #ffb020;
+      --info: #5eb3ff;
+      --bad:  #f35b57;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #182232 0%, var(--bg) 40%), var(--bg);
+      color: var(--text);
+    }
+
+    /* --- Banner / Top Nav --- */
+    .banner {
+      position: sticky; top: 0; z-index: 1000;
+      background: linear-gradient(180deg, #0d1420 0%, #0b1018 100%);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: saturate(1.1) blur(6px);
+    }
+    .banner .inner {
+      max-width: 1100px; margin: 0 auto; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .brand {
+      font-weight: 800; letter-spacing: .2px;
+    }
+    nav.primary {
+      margin-left: auto; display: flex; gap: 10px;
+    }
+    nav.primary a {
+      color: var(--text); text-decoration: none; font-weight: 600;
+      padding: 6px 10px; border-radius: 10px; border: 1px solid transparent;
+    }
+    nav.primary a:hover { background: #0e1622; border-color: var(--border); }
+    nav.primary a.active { background: #0e1a28; border-color: #2a3b52; color: var(--accent); }
+
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 24px; margin: 0 0 14px; letter-spacing: 0.2px; }
+    .sub { color: var(--muted); margin-bottom: 22px; }
+    .toolbar { display:flex; gap:8px; align-items:center; margin: 0 0 18px; }
+    button {
+      background: var(--accent); color: #0a0e14; border: none; padding: 8px 12px; border-radius: 10px;
+      font-weight: 600; cursor: pointer; box-shadow: 0 2px 0 #253e66;
+    }
+    button:disabled { opacity: .6; cursor: progress; }
+    .status { display:inline-flex; align-items:center; gap:8px; color: var(--muted); }
+    .status .dot { width:8px; height:8px; border-radius: 999px; background: var(--info); }
+    .cards { display: grid; gap: 12px; }
+    details.card {
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: clip;
+    }
+    details.card[open] { box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+    summary {
+      list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    }
+    summary::-webkit-details-marker { display:none; }
+    .sum-head { display:flex; flex:1; align-items: center; gap: 10px; min-width: 0; }
+    .name { font-weight: 700; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    .repo {
+      color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px; background: #0b1119; border: 1px solid var(--border); padding: 2px 6px; border-radius: 8px;
+    }
+    .spacer { flex:1; }
+    .chip {
+      padding: 4px 8px; border-radius: 999px; border: 1px solid var(--border);
+      font-weight: 700; text-transform: capitalize; font-size: 12px; background: #0c121a;
+    }
+    .chip.completed { color: var(--good); border-color: #1a3a2a; }
+    .chip.in_progress { color: var(--info); border-color: #173454; }
+    .chip.queued { color: var(--warn); border-color: #3a3117; }
+    .chip.requested { color: #c79cff; border-color: #382a50; }
+    .meta { color: var(--muted); font-size: 12px; display:flex; gap:12px; flex-wrap: wrap; }
+    .meta a { color: var(--accent); text-decoration: none; }
+    .content { padding: 0 16px 16px; display: grid; gap: 12px; }
+    .block { background: #0c121a; border: 1px solid var(--border); border-radius: 12px; overflow:auto; }
+    .block h3 { margin: 10px 12px; font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .3px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 12px; border-top: 1px solid var(--border); white-space: nowrap; }
+    th { text-align: left; color: var(--muted); font-weight: 700; background: #0a1017; position: sticky; top: 0; }
+    tbody tr:hover { background: #0e1621; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .empty { border: 1px dashed var(--border); border-radius: 12px; padding: 16px; color: var(--muted); text-align: center; }
+    .err { color: var(--bad); }
+  </style>
+</head>
+<body>
+<!-- Banner -->
+<header class="banner">
+  <div class="inner">
+    <div class="brand">NimbusRun Admin</div>
+    <nav class="primary" aria-label="Primary">
+      <a href="posted-webhooks.html">Posted Webhooks</a>
+      <a href="actionpool.html">Action Pools</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <h1>Posted Webhooks</h1>
+  <div class="sub">Live view of webhook runs and jobs returned by <code>GET /api/v1/admin/posted-webhooks</code>.</div>
+
+  <div class="toolbar">
+    <button id="refresh">Refresh</button>
+    <div id="status" class="status" aria-live="polite">
+      <span class="dot" id="dot"></span>
+      <span id="statusText">Idle</span>
+    </div>
+  </div>
+
+  <div id="cards" class="cards" role="region" aria-label="Webhooks"></div>
+</div>
+
+<script>
+  const ENDPOINT = "http://localhost:8080/api/v1/admin/posted-webhooks";
+
+  // Highlight active nav link based on filename
+  (function highlightActive() {
+    const current = location.pathname.split("/").pop().toLowerCase() || "posted-webhooks.html";
+    document.querySelectorAll('nav.primary a').forEach(a => {
+      if (a.getAttribute('href').toLowerCase() === current) a.classList.add('active');
+    });
+  })();
+
+  const $cards = document.getElementById("cards");
+  const $statusText = document.getElementById("statusText");
+  const $dot = document.getElementById("dot");
+  const $refresh = document.getElementById("refresh");
+
+  function setStatus(text, mode = "info") {
+    $statusText.textContent = text;
+    const styles = getComputedStyle(document.documentElement);
+    $dot.style.background =
+        mode === "ok" ? styles.getPropertyValue('--good') :
+            mode === "warn" ? styles.getPropertyValue('--warn') :
+                mode === "err" ?  styles.getPropertyValue('--bad')  :
+                    styles.getPropertyValue('--info');
+  }
+
+  // Treat null/undefined/0 (epoch placeholder) as unknown
+  function fmtTime(ms) {
+    if (ms === null || ms === undefined || Number(ms) === 0) return "—";
+    const d = new Date(Number(ms));
+    return isNaN(d.getTime()) ? String(ms) : d.toLocaleString();
+  }
+
+  function chip(status) {
+    if (!status || String(status).trim() === "") return "—";
+    const cls = String(status).toLowerCase().replaceAll("-", "_");
+    return `<span class="chip ${cls}">${status}</span>`;
+  }
+
+  function td(v) {
+    return (v === null || v === undefined || v === "") ? "—" : v;
+  }
+
+  function validUrl(url) {
+    if (!url || typeof url !== "string" || url.trim() === "") return false;
+    try { new URL(url); return true; } catch { return false; }
+  }
+
+  function renderTable(items, columns) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return `<div class="empty">No items.</div>`;
+    }
+    const thead = `<thead><tr>${columns.map(c => `<th scope="col">${c.label}</th>`).join("")}</tr></thead>`;
+    const rows = items.map(obj => {
+      return `<tr>${
+          columns.map(c => {
+            const raw = obj[c.key];
+            const val = c.format ? c.format(raw, obj) : raw;
+            return `<td>${td(val)}</td>`;
+          }).join("")
+      }</tr>`;
+    }).join("");
+    return `<div class="block"><table>${thead}<tbody>${rows}</tbody></table></div>`;
+  }
+
+  function renderCard(item) {
+    const header = `
+        <summary>
+          <div class="sum-head">
+            <div class="name">${td(item.name)}</div>
+            <code class="repo">${td(item.repositoryName)}</code>
+          </div>
+          <span>${chip(item.status)}</span>
+          <div class="spacer"></div>
+        </summary>
+      `;
+
+    const ghLink = validUrl(item.runHtml)
+        ? `<div><a href="${item.runHtml}" target="_blank" rel="noopener noreferrer nofollow">Open GitHub Run ↗</a></div>`
+        : `<div>GitHub Run: —</div>`;
+
+    const meta = `
+        <div class="meta">
+          <div><strong>ID:</strong> <code>${td(item.id)}</code></div>
+          <div><strong>Created:</strong> ${fmtTime(item.createdAt)}</div>
+          <div><strong>Updated:</strong> ${fmtTime(item.latestUpdated)}</div>
+          ${ghLink}
+        </div>
+      `;
+
+    const jobsCols = [
+      { key: "id",            label: "Job ID" },
+      { key: "name",          label: "Name" },
+      { key: "status",        label: "Status",     format: s => chip(s) },
+      { key: "actionPoolName",label: "Action Pool" },
+      { key: "startedAt",     label: "Started",    format: fmtTime },
+      { key: "completedAt",   label: "Completed",  format: fmtTime },
+    ];
+
+    const runsCols = [
+      { key: "id",         label: "Run ID" },
+      { key: "name",       label: "Name" },
+      { key: "status",     label: "Status",    format: s => chip(s) },
+      { key: "createdAt",  label: "Created",   format: fmtTime },
+      { key: "completedAt",label: "Completed", format: fmtTime },
+    ];
+
+    const jobsTable = `<h3>Jobs</h3>${renderTable(item.jobs, jobsCols)}`;
+    const runsTable = `<h3>Runs</h3>${renderTable(item.runs, runsCols)}`;
+
+    return `
+        <details class="card">
+          ${header}
+          <div class="content">
+            ${meta}
+            ${jobsTable}
+            ${runsTable}
+          </div>
+        </details>
+      `;
+  }
+
+  function render(data) {
+    if (!Array.isArray(data) || data.length === 0) {
+      $cards.innerHTML = `<div class="empty">No webhooks found.</div>`;
+      return;
+    }
+    const sorted = [...data].sort((a, b) =>
+        (b.latestUpdated ?? b.createdAt ?? 0) - (a.latestUpdated ?? a.createdAt ?? 0)
+    );
+    $cards.innerHTML = sorted.map(renderCard).join("");
+  }
+
+  async function load() {
+    setStatus("Loading…");
+    $refresh.disabled = true;
+    try {
+      const res = await fetch(ENDPOINT, {
+        headers: { "Accept": "application/json" },
+        cache: "no-store",
+        mode: "cors", // adjust if serving same-origin
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} – ${res.statusText}`);
+      const data = await res.json();
+      render(data);
+      setStatus(`Loaded ${Array.isArray(data) ? data.length : 0} item(s)`, "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus("Failed to load data", "err");
+      $cards.innerHTML = `<div class="empty err">Error: ${err.message ?? err}</div>`;
+    } finally {
+      $refresh.disabled = false;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", load);
+  $refresh.addEventListener("click", load);
+</script>
+</body>
+</html>

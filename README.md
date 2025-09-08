@@ -190,6 +190,11 @@ Once configured, push a commit to your repo. You should see a VM instance spin u
 
 ---
 
+## WebPage
+Once you have the autoscaler running you can go to http://localhost:8080 to see the UI
+
+---
+
 ### 🌍 Required Environment Variable
 
 NimbusRun requires the environment variable:

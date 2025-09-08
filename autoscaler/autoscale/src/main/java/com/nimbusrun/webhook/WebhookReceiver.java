@@ -1,6 +1,7 @@
 package com.nimbusrun.webhook;
 
 import com.nimbusrun.github.GithubActionJob;
+import com.nimbusrun.github.GithubActionRun;
 
 public interface WebhookReceiver {
 
@@ -9,4 +10,8 @@ public interface WebhookReceiver {
   default String receiverName() {
     return this.getClass().getSimpleName();
   }
+
+ default boolean receive(GithubActionRun githubActionRun){
+    return false;
+ }
 }
