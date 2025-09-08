@@ -18,8 +18,7 @@ public class NimbusRunApplication {
   public static void main(String[] args) throws Exception {
 
     setSystemProperties();
-    var ctx = SpringApplication.run(NimbusRunApplication.class, args);
-//        ctx.getBean(GithubService.class).reDeliveryFailures("120095431376");
+    SpringApplication.run(NimbusRunApplication.class, args);
   }
 
   public static void setSystemProperties() throws IOException {

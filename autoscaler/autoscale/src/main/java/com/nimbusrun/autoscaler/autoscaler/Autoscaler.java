@@ -270,6 +270,7 @@ public class Autoscaler implements WebhookReceiver {
             try {
               if (this.compute.deleteCompute(key)) {
                 metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), true);
+                metricsContainer.actionPoolProcessTime(key.getActionPool().getName(), System.currentTimeMillis() - key.getInstanceCreateTimeInMilli());
               } else {
                 metricsContainer.instanceDeletedTotal(key.getActionPool().getName(), false);
               }
@@ -281,7 +282,7 @@ public class Autoscaler implements WebhookReceiver {
           try {
             instanceIdDeleteCounter.invalidate(key);
           } catch (NullPointerException e) {
-            log.error("Somehow the ben manes cache through a null pointer exception :(");
+            log.error("Somehow the Ben Manes cache threw a null pointer exception :(");
           }
         });
   }
@@ -494,14 +495,14 @@ public class Autoscaler implements WebhookReceiver {
                   instance.getInstanceId(), instance.getInstanceName());
               incrementInstanceIdDeleteCounter(
                   new DeleteInstanceRequest(actionPool, instance.getInstanceId(),
-                      instance.getInstanceName(), instance.getExtraProperties()));
+                      instance.getInstanceName(), instance.getInstanceCreateTimeInMilli(), instance.getExtraProperties()));
             } else if (instanceIdleTimeExceeded) {
               log.debug(
                   "incrementing delete counter for instance id: {}, name: {} due to idle time exceeded.",
                   instance.getInstanceId(), instance.getInstanceName());
               incrementInstanceIdDeleteCounter(
                   new DeleteInstanceRequest(actionPool, instance.getInstanceId(),
-                      instance.getInstanceName(), instance.getExtraProperties()));
+                      instance.getInstanceName(), instance.getInstanceCreateTimeInMilli(), instance.getExtraProperties()));
             }
           });
         } catch (Exception e) {

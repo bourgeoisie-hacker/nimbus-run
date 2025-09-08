@@ -9,12 +9,13 @@ public class DeleteInstanceRequest {
   private final String instanceId;
   private final String instanceName;
   private final Object extraProperties;
-
-  public DeleteInstanceRequest(ActionPool actionPool, String instanceId, String instanceName,
+  private final long instanceCreateTimeInMilli;
+  public DeleteInstanceRequest(ActionPool actionPool, String instanceId, String instanceName,long instanceCreateTimeInMilli,
       Object extraProperties) {
     this.actionPool = actionPool;
     this.instanceId = instanceId;
     this.instanceName = instanceName;
+    this.instanceCreateTimeInMilli = instanceCreateTimeInMilli;
     this.extraProperties = extraProperties;
   }
 
@@ -24,6 +25,14 @@ public class DeleteInstanceRequest {
 
   public String getInstanceId() {
     return instanceId;
+  }
+
+  public String getInstanceName() {
+    return instanceName;
+  }
+
+  public long getInstanceCreateTimeInMilli() {
+    return instanceCreateTimeInMilli;
   }
 
   public Object getExtraProperties() {

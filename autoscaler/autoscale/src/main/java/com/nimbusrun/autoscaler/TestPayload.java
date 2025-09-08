@@ -22,7 +22,7 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 public class TestPayload {
 
   public static void main(String[] args) throws IOException {
-    sendPayloads("webhook-examples-mine/completedCycle");
+    sendPayloads("webhook-examples-mine/sends/aws/os");
 //    sendPayload(null);
   }
 

@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  autoscaler:
+    image: bourgeoisiehacker/autoscaler:latest
+    environment:
+#      AWS_ACCESS_KEY_ID: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+#      AWS_SECRET_ACCESS_KEY: <SETUP> # You can explicitly set AWS environment variables for authentication to AWS
+      NIMBUS_RUN_CONFIGURATION_FILE: /opt/config.yaml
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./config.yaml:/opt/config.yaml"
+networks:
+  default:
+    name: nimbus_run

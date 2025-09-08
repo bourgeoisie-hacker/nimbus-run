@@ -24,6 +24,7 @@ public class MetricsContainer {
   public static String INSTANCE_CREATE_RETRIES = "instance_create_retries_total";
   public static String INVALID_ACTION_POOL_TOTAL = "invalid_action_pool_total";
   public static String INVALID_WORKFLOW_JOB_LABEL_TOTAL = "invalid_workflow_job_label_total";
+  public static String ACTION_POOL_PROCESS_TIME_TOTAL = "action_pool_process_time_total";
   /*TODO
       - counter user trigger a workflow_run
       - counter repository triggering workflow_run
@@ -94,6 +95,14 @@ public class MetricsContainer {
 
   public void instanceDeletedTotal(String actionPoolName, boolean success) {
     instanceOperations(actionPoolName, success, DELETE_OPERATION);
+  }
+
+  public void actionPoolProcessTime(String actionPoolName, long processTime){
+    List<Tag> tags = new ArrayList<>();
+    tags.add(Tag.of(POOL_NAME_TAG, actionPoolName));
+    Counter.builder(ACTION_POOL_PROCESS_TIME_TOTAL).description("""
+        Tracks the total time per compute of an action pool has been up. This is useful for reporting in knowing which action pool is getting used the most and potential costs.
+        """).tags(tags).register(meterRegistry).increment(processTime);
   }
 
   private void instanceOperations(String actionPoolName, boolean success, String operation) {

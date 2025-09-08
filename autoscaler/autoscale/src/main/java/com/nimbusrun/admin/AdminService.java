@@ -35,7 +35,6 @@ public class AdminService implements WebhookReceiver {
   public boolean receive(GithubActionJob githubActionJob) {
     ValidWorkFlowJob vf = new ValidWorkFlowJob(githubActionJob,this.actionPoolMap, actionGroupName);
     WorkflowManager wm = getWorkflowManager(new Key(githubActionJob.getRunId(),githubActionJob.getWorkflowName(), githubActionJob.getRepositoryFullName()));
-    log.info("from job: {}",System.identityHashCode(wm)+"");
     if(!vf.isInvalid()){
       wm.addRelatedToNimbusRun(githubActionJob);
     }else{
@@ -47,8 +46,6 @@ public class AdminService implements WebhookReceiver {
   @Override
   public boolean receive(GithubActionRun gr) {
     WorkflowManager wm = getWorkflowManager(new Key(gr.getId(),gr.getName(), gr.getRepositoryFullName()));
-    log.info("from run: {}",System.identityHashCode(wm)+"");
-
     wm.add(gr);
     return true;
   }
