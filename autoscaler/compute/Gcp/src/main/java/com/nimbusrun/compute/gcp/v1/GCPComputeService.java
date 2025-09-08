@@ -343,7 +343,7 @@ public class GCPComputeService extends Compute {
   private NetworkInterface createNetworkInterface(String vpcName, String subnetName,
       boolean publicIp) {
     if (publicIp) {
-      return NetworkInterface.newBuilder().setNetwork(vpcName).setNetwork(subnetName)
+      return NetworkInterface.newBuilder().setNetwork(vpcName).setSubnetwork(subnetName)
           .addAccessConfigs(AccessConfig.newBuilder().setType(
               AccessConfig.Type.ONE_TO_ONE_NAT.toString()).setName("External NAT").build())
           .setName("nic0").build();
