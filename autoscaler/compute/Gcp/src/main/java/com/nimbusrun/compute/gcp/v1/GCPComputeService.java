@@ -574,8 +574,8 @@ public class GCPComputeService extends Compute {
 
   public Optional<String> cacheLatestImageVersion(GCPConfig.ActionPool actionPool) {
     try {
-      return Optional.ofNullable(latestMachineImage.get(actionPool.getProjectId(),
-          (projectId) -> latestMachineImage(actionPool)));
+      return Optional.ofNullable(latestMachineImage.get(actionPool.getName(),
+          (actionPoolName) -> latestMachineImage(actionPool)));
     } catch (NullPointerException e) {
       Utils.excessiveErrorLog(
           "Error when fetching latest image due to %s".formatted(e.getMessage()), e, log);
@@ -611,6 +611,7 @@ public class GCPComputeService extends Compute {
         Image latestImage = latestImageIterator.next();
         if (arch.equalsIgnoreCase(latestImage.getArchitecture())
             && latestImage.hasCreationTimestamp() && latestImage.getName().matches(templ)) {
+          log.info("found image: %s for action pool: %s".formatted(latestImage.getName(), actionPool.getName()));
           return "projects/%s/global/images/%s".formatted(project, latestImage.getName());
         }
       }
