@@ -47,7 +47,7 @@ public enum GcpOperatingSystem {
     return switch (this) {
       case UBUNTU_20_04, UBUNTU_22_04, UBUNTU_23_04, UBUNTU_24_04, UBUNTU_25_04 ->
           "^(ubuntu).*?(%s).*".formatted(this.version);
-      case DEBIAN_11, DEBIAN_12, DEBIAN_13 -> "^(debian).*?(%s).*".formatted(this.version);
+      case DEBIAN_11, DEBIAN_12, DEBIAN_13 -> "^(debian)-(%s).*".formatted(this.version);
       case UNKNOWN -> "";
     };
   }
