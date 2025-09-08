@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.nimbusrun</groupId>
         <artifactId>autoscaler</artifactId>
-        <version>0.3.12</version>
+        <version>0.3.13</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>compute-aws</artifactId>
