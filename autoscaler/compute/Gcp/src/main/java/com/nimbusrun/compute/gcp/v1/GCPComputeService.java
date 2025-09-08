@@ -598,7 +598,7 @@ public class GCPComputeService extends Compute {
     String project = operatingSystem.gcpProviderProject();
     String arch = determineArch(architecture);
     String templ = operatingSystem.createRegex();
-    try (ImagesClient imagesClient = ImagesClient.create()) {
+    try (ImagesClient imagesClient = GCPClients.createImagesClient(actionPool)) {
       ListImagesRequest request = ListImagesRequest.newBuilder()
           .setProject(project)
           .setMaxResults(10)
