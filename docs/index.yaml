@@ -2,6 +2,23 @@ apiVersion: v1
 entries:
   nimbus-run:
   - apiVersion: v2
+    appVersion: 0.3.8
+    created: "2025-09-08T20:47:45.831979678Z"
+    description: NimbusRun is an autoscaler for GitHub self-hosted runners that run
+      on virtual machines (AWS, GCP, or your own compute engine). Unlike Kubernetes-only
+      solutions, it brings elastic scaling to VM-based runners, including full scale-to-zero
+      support to eliminate the “cloud idle tax.” With features such as dynamic autoscaling
+      of GitHub Actions runners, support for multiple cloud providers or pluggable
+      backends, retry logic for stuck jobs, and simple deployment via Helm, NimbusRun
+      helps reduce idle compute, improve build efficiency, and prevent unexpected
+      costs on your cloud bill.
+    digest: 1a55b585c6c6d2bb95c80a29b511a913bd0dfb01ee1295f211a27d111d31b85b
+    name: nimbus-run
+    type: application
+    urls:
+    - https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.3.8/nimbus-run-0.3.8.tgz
+    version: 0.3.8
+  - apiVersion: v2
     appVersion: 0.3.7
     created: "2025-09-08T19:15:48.087095938Z"
     description: NimbusRun is an autoscaler for GitHub self-hosted runners that run
@@ -332,4 +349,4 @@ entries:
     urls:
     - https://github.com/bourgeoisie-hacker/nimbus-run/releases/download/v0.2.11/helm/nimbus-run-0.2.11.tgz
     version: 0.2.11
-generated: "2025-09-08T19:15:48.086442751Z"
+generated: "2025-09-08T20:47:45.831321179Z"
