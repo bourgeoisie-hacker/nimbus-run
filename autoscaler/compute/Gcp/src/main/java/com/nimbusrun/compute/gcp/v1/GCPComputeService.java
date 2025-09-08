@@ -479,7 +479,7 @@ public class GCPComputeService extends Compute {
       if (ap.getPublicIp() == null) {
         log.info("Action pool {} using default publicIp value of {}", ap.getName(),
             DEFAULT_IS_PUBLIC_IP);
-        ap.setDefault(DEFAULT_IS_PUBLIC_IP);
+        ap.setPublicIp(DEFAULT_IS_PUBLIC_IP);
       }
 
       if (ap.getArchitecture() == null) {

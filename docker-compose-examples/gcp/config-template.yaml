@@ -22,16 +22,15 @@ compute:
   defaultActionPool:
     name: default-pool
   actionPools:
-    - name: test1
-      instanceType: n1-standard-4
-      maxInstanceCount: 4
-    - name: test2
-      architecture: "arm64"
+    - name: one
+      os: ubuntu20.04
+    - name: two
+      os: ubuntu22.04
+    - name: three
+      os: ubuntu24.04
+    - name: four
+      os: ubuntu25.04
+    - name: five
+      os: debian11
+    - name: six
       os: debian12
-      instanceType: t2a-standard-2
-      region: us-central1
-      subnet: regions/us-central1/subnetworks/default
-      zones: ["us-central1-a","us-central1-b"]
-      maxInstanceCount: 3
-      diskSettings:
-        size: 12

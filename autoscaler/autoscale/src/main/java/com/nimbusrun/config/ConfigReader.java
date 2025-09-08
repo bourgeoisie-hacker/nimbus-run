@@ -72,8 +72,8 @@ public class ConfigReader {
       List<String> validateActionPoolErrors = validateActionPool(response.actionPools());
 
       if (!validateActionPoolErrors.isEmpty()) {
-        log.error("Validation errors for action pools:\n" + String.join("\n\t",
-            validateActionPoolErrors));
+        log.error("Validation Errors Found");
+        validateActionPoolErrors.forEach(log::error);
         System.exit(1);
       }
       actionPoolMap.putAll(response.actionPools().stream()
