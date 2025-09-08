@@ -40,8 +40,11 @@
   <div id="statusRow" class="row g-3 align-items-center mb-4">
     <div class="col-auto"><span class="text-muted">Last updated:</span></div>
     <div class="col-auto"><span id="lastUpdated" class="badge text-bg-light">—</span></div>
+    <div class="col-auto d-none" id="loadingWrap">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
+    </div>
     <div class="col-12 col-md">
-      <div id="alertBox" class="small text-muted">Loaded from embedded configuration.</div>
+      <div id="alertBox"></div>
     </div>
   </div>
 
@@ -117,13 +120,13 @@ jobs:
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script>
-  // Embedded GCP data
-  const DATA = {"computeType":"gcp","runnerGroup":"prod","actionPool":{"test2":{"name":"test2","projectId":"massive-dynamo-342018","region":"us-east1","instanceType":"c4-standard-4-lssd","maxInstanceCount":3,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-east1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-east1-b","us-east1-c","us-east1-d"],"diskSettings":{"size":20},"architecture":"X64","os":"ubuntu24.04","default":false,"nvme":null},"default-pool":{"name":"default-pool","projectId":"massive-dynamo-342018","region":"us-east1","instanceType":"e2-highcpu-4","maxInstanceCount":10,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-east1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-east1-b","us-east1-c","us-east1-d"],"diskSettings":{"size":20},"architecture":"X64","os":"ubuntu24.04","default":true,"nvme":null},"test3":{"name":"test3","projectId":"massive-dynamo-342018","region":"us-east1","instanceType":"c4-standard-4-lssd","maxInstanceCount":3,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-east1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-east1-b","us-east1-c","us-east1-d"],"diskSettings":{"size":20},"architecture":"X64","os":"ubuntu24.04","default":false,"nvme":null},"test":{"name":"test","projectId":"massive-dynamo-342018","region":"us-central1","instanceType":"t2a-standard-2","maxInstanceCount":3,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-central1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-central1-a","us-central1-b"],"diskSettings":{"size":12},"architecture":"ARM64","os":"debian12","default":false,"nvme":null},"e2-highcpu-4":{"name":"e2-highcpu-4","projectId":"massive-dynamo-342018","region":"us-east1","instanceType":"e2-highcpu-4","maxInstanceCount":3,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-east1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-east1-b","us-east1-c","us-east1-d"],"diskSettings":{"size":20},"architecture":"X64","os":"debian12","default":false,"nvme":null},"n1-standard-4":{"name":"n1-standard-4","projectId":"massive-dynamo-342018","region":"us-east1","instanceType":"n1-standard-4","maxInstanceCount":4,"idleScaleDownInMinutes":10,"serviceAccountPath":null,"subnet":"regions/us-east1/subnetworks/default","vpc":"global/networks/default","publicIp":true,"zones":["us-east1-b","us-east1-c","us-east1-d"],"diskSettings":{"size":20},"architecture":"X64","os":"debian12","default":false,"nvme":null}}};
+  const endpoint = 'api/v1/admin/action-pool-status';
 
   const els = {
     computeTypeBadge: document.getElementById('computeTypeBadge'),
     groupBadge: document.getElementById('groupBadge'),
     lastUpdated: document.getElementById('lastUpdated'),
+    loadingWrap: document.getElementById('loadingWrap'),
     alertBox: document.getElementById('alertBox'),
     poolGrid: document.getElementById('poolGrid'),
     emptyState: document.getElementById('emptyState'),
@@ -265,6 +268,7 @@ jobs:
     els.groupBadge.textContent = `group: ${data.runnerGroup ?? '—'}`;
     if (els.groupValue) els.groupValue.textContent = data.runnerGroup ?? '—';
     els.lastUpdated.textContent = fmtDate();
+    window.__lastData = data;
     const pools = data.actionPool || {};
     els.poolCount.textContent = Object.keys(pools).length;
     populateSelect(pools);
@@ -285,6 +289,22 @@ jobs:
     els.emptyState.classList.toggle('d-none', visible !== 0);
   }
 
+  async function load() {
+    try {
+      els.loadingWrap.classList.remove('d-none');
+      els.alertBox.innerHTML = '';
+      const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      render(data);
+    } catch (err) {
+      console.error(err);
+      els.alertBox.innerHTML = `<div class="alert alert-danger" role="alert">Failed to load status from <code>${endpoint}</code>: ${err.message}</div>`;
+    } finally {
+      els.loadingWrap.classList.add('d-none');
+    }
+  }
+
   // Events
   els.copyYamlBtn.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(els.yamlOutput.textContent); new bootstrap.Toast(els.toast).show(); }
@@ -292,10 +312,10 @@ jobs:
   });
   els.poolSelect.addEventListener('change', updateYaml);
   els.filterInput.addEventListener('input', () => render(window.__lastData || { computeType: 'gcp', runnerGroup: '', actionPool: {} }));
-  els.refreshBtn.addEventListener('click', () => render(window.__lastData || DATA));
+  els.refreshBtn.addEventListener('click', load);
 
   // Initial render from embedded data
-  document.addEventListener('DOMContentLoaded', () => { window.__lastData = DATA; render(DATA); });
+  document.addEventListener('DOMContentLoaded', load);
 </script>
 </body>
 </html>
