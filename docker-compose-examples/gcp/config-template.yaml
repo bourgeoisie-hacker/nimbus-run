@@ -1,5 +1,5 @@
-name: aws-1-autoscaler
-computeType: aws
+name: gcp-1-autoscaler
+computeType: gcp
 logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
 
 github:

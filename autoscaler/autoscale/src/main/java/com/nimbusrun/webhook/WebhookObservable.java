@@ -30,7 +30,7 @@ public class WebhookObservable {
   }
 
   @VisibleForTesting
-  private boolean processGithubJobs() {
+  private void processGithubJobs() {
     while (true) {
       try {
         GithubActionJob gj;
@@ -52,7 +52,7 @@ public class WebhookObservable {
     }
   }
   @VisibleForTesting
-  private boolean processGithubRuns() {
+  private void processGithubRuns() {
     while (true) {
       try {
         GithubActionRun gr;

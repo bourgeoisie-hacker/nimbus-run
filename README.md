@@ -63,6 +63,7 @@ Before you can unleash NimbusRun, make sure you have the following in place:
 - An AWS or GCP account (or, if you’re adventurous, roll your own compute engine by extending [Compute.java](autoscaler/compute/ComputeApi/src/main/java/com/nimbusrun/compute/Compute.java) 😏)
 - A [GitHub token](https://github.com/settings/tokens) with the right permissions
 - At least a passing knowledge of [GitHub Actions](https://docs.github.com/en/actions)
+- The service account needs permissions to create/delete/list compute instances
 
 ---
 
@@ -336,24 +337,103 @@ Metrics exposed at `/metrics` endpoint. Because this is a springboot app additio
 
 | Metric Name                        | Type    | Tags                                                                 | Description |
 |------------------------------------|---------|----------------------------------------------------------------------|-------------|
-| `instance_operations_total`        | Counter | `pool_name`, `type` (`create` / `delete`), `result` (`success` / `failure`) | Increments when an operation on a compute instance occurs (create or delete), labeled by success or failure. |
+| `instance_operations_total`        | Counter | `pool_name`, `type` (`create` / `delete`), `result` (`success` / `failure`) | Increments whenever a compute instance is created or deleted, labeled by operation type and result. |
 | `instance_count`                   | Gauge   | `pool_name`                                                          | Tracks the current number of running instances in an action pool. |
-| `instance_create_retries_total`    | Counter | `pool_name`, `type` (`full` / `failed`)                              | Increments when a job retries due to pool being full or an instance creation failure. |
-| `invalid_action_pool_total`        | Counter | `pool_name`, `repository_name`, `workflow_name`                      | Increments when a workflow references an invalid action pool. |
-| `invalid_workflow_job_label_total` | Counter | `repository_name`, `workflow_name`, `workflow_job_name`              | Increments when a workflow job has invalid labels, preventing Nimbus runners from picking it up. |
+| `instance_create_retries_total`    | Counter | `pool_name`, `type` (`full` / `failed`)                              | Increments when a job retries because the action pool is full or instance creation failed (e.g., misconfiguration or permissions). |
+| `invalid_action_pool_total`        | Counter | `pool_name`, `repository_name`, `workflow_name`                      | Increments when a workflow references an invalid action pool within a valid action group. |
+| `invalid_workflow_job_label_total` | Counter | `repository_name`, `workflow_name`, `workflow_job_name`              | Increments when a workflow job has invalid labels, preventing Nimbus-run self-hosted runners from executing it. |
+| `repository_upscale_total`         | Counter | `pool_name`, `repository_name`                                       | Tracks the number of times a repository has requested an action pool to process a workflow job. |
+| `action_pool_process_time_total`   | Counter | `pool_name`                                                          | Accumulates the total processing time (in arbitrary units passed to the counter) for an action pool, useful for cost and utilization reporting. |
+
+### PromQL Examples
+
+> Adjust job/namespace labels as needed for your Prometheus setup. Replace `5m`/`1h` with your preferred windows.
+
+ Instance operations (create/delete)
+
+**Overall success rate (all pools, all ops):**
+
+```promql
+sum(rate(instance_operations_total{result="success"}[5m]))
+/
+sum(rate(instance_operations_total[5m]))
+```
+
+**Success rate by pool and operation type:**
+
+```promql
+sum by (pool_name, type) (rate(instance_operations_total{result="success"}[5m]))
+/
+sum by (pool_name, type) (rate(instance_operations_total[5m]))
+
+```
+**Creates vs deletes per pool (ops/sec):**
+
+```promql
+sum by (pool_name, type) (rate(instance_operations_total[5m]))
+```
+
+**Failures per pool (alerts feed):**
+
+```promql
+sum by (pool_name, type) (rate(instance_operations_total{result="failure"}[5m]))
+```
+
+**High retry alarm idea**
+
+Indicates you may want to increment your max instance count
+
+```promql
+sum by (pool_name) (increase(instance_create_retries_total[15m])) > 50
+
+```
+
+**Invalid action pool references (top offenders in 1h):**
+
+```promql
+topk(10, sum by (repository_name, workflow_name, pool_name) (
+  increase(invalid_action_pool_total[1h])
+))
+```
+
+**Invalid workflow job labels (last 1h):**
+
+```promql
+sum by (repository_name, workflow_name, workflow_job_name) (
+  increase(invalid_workflow_job_label_total[1h])
+)
+```
+
+**Upscale requests by repo and pool (rate):**
+
+```promql
+sum by (repository_name, pool_name) (rate(repository_upscale_total[5m]))
+```
+
+**Top repos requesting capacity (last 24h):**
+
+```promql
+topk(10, sum by (repository_name) (increase(repository_upscale_total[24h])))
+```
+
+**Cost hotspot hint (pools with most processed time in 24h):**
+
+```promql
+topk(5, sum by (pool_name) (increase(action_pool_process_time_total[24h])))
+```
 
 ## Supported Operating Systems Compatibility Matrix
 
-|             | AWS | GCP |
-|-------------|-----|-----|
-| Ubuntu20.04 | ✅   | ✅   |
-| Ubuntu22.04 | ✅   | ✅   |
-| Ubuntu23.04 | ✅   | ❌   |
-| Ubuntu24.04 | ✅   | ✅   |
-| Ubuntu25.04 | ✅   | ✅   |
-| Debian11    | ✅   | ✅   |
-| Debian12    | ✅   | ✅   |
-| Debian13    | ❌   | ❌   |
+|             | Configuration Name | AWS | GCP |
+|-------------|--------------------|-----|-----|
+| Ubuntu20.04 | ubuntu20.04        | ✅   | ✅   |
+| Ubuntu22.04 | ubuntu22.04        | ✅   | ✅   |
+| Ubuntu23.04 | ubuntu23.04        | ✅   | ❌   |
+| Ubuntu24.04 | ubuntu24.04        | ✅   | ✅   |
+| Ubuntu25.04 | ubuntu25.04        | ✅   | ✅   |
+| Debian11    | debian11           | ✅   | ✅   |
+| Debian12    | debian12           | ✅   | ✅   |
+| Debian13    | debian13           | ❌   | ❌   |
 
 ## Supported CPU Architecture
 
@@ -362,7 +442,7 @@ Metrics exposed at `/metrics` endpoint. Because this is a springboot app additio
 | X64   | ✅   | ✅   |
 | ARM64 | ✅   | ✅   |
 
-Please not that if you choose to use arm64 ensure that the instance type is compatible. Please see official documentation below
+Please note that if you choose to use arm64 ensure that the instance type is compatible. Please see official documentation below
 
 *AWS* 
 - https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-type-specifications.html

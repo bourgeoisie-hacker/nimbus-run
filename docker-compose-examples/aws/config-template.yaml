@@ -9,19 +9,18 @@ github:
 
 compute:
   defaultSettings:
-    idleScaleDownInMinutes: 10 # This number should higher than 5 atleast. It takes a second for runner service to start
-    region: "" # i.e us-east-2
+    region: "us-east-1"
     subnet: "" # subnet-id i.e subnet-1234
     securityGroup: "" # security group id i.e sg-1234
     diskSettings:
       type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
       size: "20" # in gigs
-    instanceType: "" # i.e t3.medium
+    instanceType: "t3.medium" # i.e t3.medium
     maxInstanceCount: 10 #
   defaultActionPool:
     name: default-pool
   actionPools:
-    - name: t3.medium
+    - name: test1
       instanceType: t3.medium
-    - name: big-compute
+    - name: test2
       instanceType: c4.2xlarge
