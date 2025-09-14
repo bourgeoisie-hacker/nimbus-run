@@ -1,0 +1,44 @@
+name: aws-1-autoscaler
+computeType: aws
+logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
+
+
+github:
+  groupName: ${RUNNER_GROUP}
+  organizationName: "bourgeoisie-whacker"
+  token: ${GITHUB_TOKEN}
+#  webhookSecret: test
+
+retryPolicy:
+  maxJobInQueuedInMinutes: 10
+  maxTimeBtwRetriesInMinutes: 10
+  maxRetries: 3
+
+compute:
+  defaultSettings:
+    projectId: utility-glider-471519-u7
+    region: us-east1
+    subnet: "regions/us-east1/subnetworks/default" # regions/us-east1/subnetworks/default
+    vpc: "global/networks/default" # global/networks/default
+    zones: ["us-east1-b","us-east1-c", "us-east1-d"]
+    #    serviceAccountPath: #<------- if blank it'll just use the default Credentials provider
+    diskSettings:
+      size: "20" # in gigs
+    instanceType: e2-highcpu-4
+    serviceAccountPath: /Users/austin.poole/git/github-actions-autoscaler/docker-compose-implied/utility-glider-471519-u7-636a3b1e16e3.json
+  defaultActionPool:
+    name: default-pool
+  actionPools:
+    - name: one
+      os: ubuntu20.04
+    - name: two
+      os: ubuntu22.04
+    - name: three
+      os: ubuntu24.04
+    - name: four
+      os: ubuntu25.04
+    - name: five
+      os: debian11
+    - name: six
+      os: debian12
+    - name: seven

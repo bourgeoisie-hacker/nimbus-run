@@ -1,10 +1,13 @@
 package com.nimbusrun.admin.controller;
 
 import com.nimbusrun.admin.AdminService;
+import com.nimbusrun.autoscaler.autoscaler.Autoscaler;
 import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.config.ConfigReader;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.ModelMap;
@@ -21,13 +24,15 @@ public class AdminController {
   private ConfigReader configReader;
   private AdminService adminService;
   private final GithubApi githubApi;
+  private final Autoscaler autoscaler;
   public AdminController(ConfigReader configReader, Compute compute, AdminService adminService,
-      GithubApi githubApi){
+      GithubApi githubApi, Autoscaler autoscaler){
     this.configReader = configReader;
     this.compute = compute;
     this.adminService = adminService;
 
     this.githubApi = githubApi;
+    this.autoscaler = autoscaler;
   }
 
   @GetMapping(value = "api/v1/admin/action-pool-status", produces = "application/json")
@@ -41,6 +46,11 @@ public class AdminController {
     return  new ResponseEntity<>(this.adminService.getWorkflowManagers().stream().map(WorkflowManagerResponse::fromWorkflowManager).toList(),HttpStatus.OK);
   }
 
+  @GetMapping("api/v1/admin/current-instances")
+  public ResponseEntity<Map<String, Set<String>>> currentInstances(){
+    return new ResponseEntity<>(this.autoscaler.getCurrentInstances(), HttpStatus.OK);
+  }
+
   @GetMapping("actionpool.html")
   public ModelAndView actionPoolStatusPage(ModelMap map) {
     if(this.configReader.getBaseConfig().getComputeType().equalsIgnoreCase("aws")){
@@ -50,8 +60,8 @@ public class AdminController {
     }else {
       return new ModelAndView("redirect:/api/v1/admin/action-pool-status");
     }
-//    map.addAttribute("config", response);
-
   }
+
+
 
 }

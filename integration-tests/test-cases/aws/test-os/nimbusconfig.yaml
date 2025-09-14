@@ -1,0 +1,55 @@
+name: aws-1-autoscaler
+computeType: aws
+logLevel: "info" # info | warn | debug | verbose. verbose option means debug mode but also dependencies are in debug mode. Of course  as a java springboot developer you can override these settings easily
+
+
+github:
+  groupName: ${RUNNER_GROUP}
+  organizationName: ${ORGANIZATION_NAME}
+  token: ${GITHUB_TOKEN}
+  webhookSecret: test
+
+retryPolicy:
+  maxJobInQueuedInMinutes: 6
+  maxTimeBtwRetriesInMinutes: 6
+  maxRetries: 3
+
+compute:
+  defaultSettings:
+    idleScaleDownInMinutes: 10
+    region: us-east-1
+    subnet: subnet-257dbf7d
+    securityGroup: sg-0189c3298c7be64ca
+    #    credentialsProfile: #<------- if blank it'll just use the default Credentials provider
+    diskSettings:
+      type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
+      size: "20" # in gigs
+    instanceType: t3.medium
+    maxInstanceCount: 10 # <--no max
+  defaultActionPool:
+    name: default-pool
+  actionPools:
+    - name: one
+      os: ubuntu20.04
+      instanceType: t3.medium
+      diskSettings:
+        type: "gp2"
+        size: 20
+    - instanceType: t3.medium
+      os: ubuntu22.04
+      name: two
+    - instanceType: t3.medium
+      name: three
+      os: ubuntu23.04
+    - instanceType: t3.medium
+      name: four
+      os: ubuntu24.04
+    - name: five
+      os: ubuntu25.04
+      instanceType: t3.medium
+    - name: six
+      os: debian11
+      instanceType: t3.medium
+    - name: seven
+      os: debian12
+      instanceType: t3.medium

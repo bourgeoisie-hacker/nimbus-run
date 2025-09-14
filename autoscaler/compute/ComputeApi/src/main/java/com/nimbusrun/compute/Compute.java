@@ -21,7 +21,7 @@ public abstract class Compute {
   public abstract ListInstanceResponse listComputeInstances(ActionPool actionPool);
 
   /**
-   * The key should be the action pool name.
+   * The key should be the action pool name. All action pools should be returned even if the value is empty
    */
   public abstract Map<String, ListInstanceResponse> listAllComputeInstances();
 

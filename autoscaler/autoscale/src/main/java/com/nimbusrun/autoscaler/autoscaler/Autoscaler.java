@@ -14,6 +14,7 @@ import com.nimbusrun.compute.Compute;
 import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.ListInstanceResponse;
+import com.nimbusrun.compute.ListInstanceResponse.Instance;
 import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
@@ -23,15 +24,19 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,6 +61,7 @@ public class Autoscaler implements WebhookReceiver {
   public static final Integer MAX_CREATE_FAILURE_RETRIES = 3;
   public static final Integer MAX_CREATE_POOL_FULL_RETRIES = 1000;
 
+  private final Map<String, Set<String>> currentInstances;
   private final ScheduledExecutorService scheduledExecutorService;
   public BlockingDeque<UpscaleRequest> receivedRequests = new LinkedBlockingDeque<>();
   public BlockingDeque<Pause<UpscaleRequest>> retryUpscaleRequests = new LinkedBlockingDeque<>();
@@ -121,11 +127,12 @@ public class Autoscaler implements WebhookReceiver {
     this.scheduledExecutorService = Executors.newScheduledThreadPool(5);
     this.threadPerTasks = Executors.newCachedThreadPool();
     this.actionPoolMap = populateActionPoolMap();
+    this.currentInstances =populateCurrentInstances();
     this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault)
         .findAny();
     this.scheduledExecutorService.scheduleWithFixedDelay(this::handleComputeAndRunners, 1, 30,
         TimeUnit.SECONDS);
-    this.scheduledExecutorService.scheduleWithFixedDelay(this::updateInstanceCountGauge, 1, 30,
+    this.scheduledExecutorService.scheduleWithFixedDelay(this::updateCurrentInstances, 1, 30,
         TimeUnit.SECONDS);
     this.processMessageThread.execute(this::processMessage);
     this.processMessageThread.execute(this::processRetryMessage);
@@ -162,6 +169,15 @@ public class Autoscaler implements WebhookReceiver {
     return this.getConfigReader().getActionPoolMap().values().stream().collect(
         Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b,
             ConcurrentHashMap::new));
+  }
+/**
+   * @return map of action pool names to {@link ActionPool}
+   */
+  @VisibleForTesting
+  private Map<String, Set<String>> populateCurrentInstances() {
+    Map<String, Set<String>> items = new ConcurrentHashMap<>();
+    this.getConfigReader().getActionPoolMap().keySet().stream().forEach((name)-> items.put(name,new HashSet<>()));
+    return items;
   }
 
   private ConfigReader getConfigReader() {
@@ -238,9 +254,14 @@ public class Autoscaler implements WebhookReceiver {
   /**
    * For metrics
    */
-  private void updateInstanceCountGauge() {
-    this.compute.listAllComputeInstances().forEach((key, insts) ->
+  private void updateCurrentInstances() {
+    Map<String, ListInstanceResponse> instanceMap = compute.listAllComputeInstances();
+
+    instanceMap.forEach((key, insts) ->
         metricsContainer.updateInstanceCount(key, insts.instances().size()));
+    instanceMap.forEach((ap, lit)->{
+      currentInstances.put(ap,lit.instances().stream().map(Instance::getInstanceId).collect(Collectors.toSet()));
+    });
   }
 
   /**
@@ -601,6 +622,9 @@ public class Autoscaler implements WebhookReceiver {
     return false;
   }
 
+  public Map<String, Set<String>> getCurrentInstances() {
+    return Collections.unmodifiableMap(currentInstances);
+  }
 
   public enum UpScaleReason {
     NEW_REQUEST, RETRY_POOL_FULL, RETRY_FAILED_CREATE;

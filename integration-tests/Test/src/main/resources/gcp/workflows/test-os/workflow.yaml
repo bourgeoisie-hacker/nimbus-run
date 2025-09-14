@@ -1,0 +1,131 @@
+name: ${WORKFLOW_NAME}
+on:
+  workflow_dispatch:
+
+
+jobs:
+  test1:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=one
+    steps:
+      - name: test
+        run: echo "test"
+      - name: test2
+        run: echo "test2"
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+  test2:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=two
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+  test3:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=three
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+  test4:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=four
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+
+  test5:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=five
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+  test6:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=six
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+      - name: sleep
+        run: sleep 60
+
+  test7:
+    runs-on:
+      group: prod
+      labels:
+        - action-group=prod
+        - action-pool=seven
+    steps:
+      - name: test
+        run: echo "test"
+
+      - name: test2
+        run: echo "test2"
+
+      - name: test3
+        run: echo "test3"
+
+      - name: sleep
+        run: sleep 60

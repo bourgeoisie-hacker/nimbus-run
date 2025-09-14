@@ -1,0 +1,10 @@
+name: ${WORKFLOW_NAME}
+on:
+  push:
+
+jobs:
+  test1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: test
+        run: echo "done"

@@ -1,0 +1,21 @@
+{
+  "hostName": "104.154.85.106",
+  "organizationName": "bourgeoisie-whacker",
+  "defaultBranch": "master",
+  "repositoryName": "test7",
+  "awsJarPath": "/Users/austin.poole/git/github-actions-autoscaler/autoscaler/target/autoscaler-aws.jar",
+  "gcpJarPath": "/Users/austin.poole/git/github-actions-autoscaler/autoscaler/target/autoscaler-aws.jar",
+
+  "aws": {
+    "region": "us-east-1",
+    "subnet": "subnet-257dbf7d",
+    "securityGroup" : "sg-0189c3298c7be64ca"
+  },
+  "gcp": {
+    "projectId": "utility-glider-471519-u7",
+    "region": "us-east1",
+    "subnet": "regions/us-east1/subnetworks/default",
+    "vpc": "global/networks/default",
+    "zones": ["us-east1-b","us-east1-c", "us-east1-d"]
+  }
+}
