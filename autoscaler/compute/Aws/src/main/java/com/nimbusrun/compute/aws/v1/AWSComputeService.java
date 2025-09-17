@@ -223,9 +223,9 @@ public class AWSComputeService extends Compute {
             "Action Pool %s missing subnet. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
-      if (actionPool.getSecurityGroup() == null) {
+      if (actionPool.getSecurityGroups() == null || actionPool.getSecurityGroups().isEmpty()) {
         errors.add(
-            "Action Pool %s missing security group. Please add to defaultSettings or on Action Pool".formatted(
+            "Action Pool %s missing security groups. Please add to defaultSettings or on Action Pool".formatted(
                 name));
       }
       if (actionPool.getCredentialsProfile() == null) {
@@ -379,7 +379,7 @@ public class AWSComputeService extends Compute {
           .instanceType(actionPool.getInstanceType())
           .maxCount(1)
           .minCount(1)
-          .securityGroupIds(actionPool.getSecurityGroup())
+          .securityGroupIds(actionPool.getSecurityGroups())
           .subnetId(actionPool.getSubnet())
           .userData(encodedScript)
 

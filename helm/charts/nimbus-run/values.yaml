@@ -13,7 +13,7 @@ compute:
       subnet:
 
       # AWS security group ID for instance firewall rules
-      securityGroup:
+      securityGroups: []
 
       # The operating system to be used. See compatibility matrix to see supported version
       os:
@@ -52,7 +52,7 @@ compute:
 #        instanceType: t3a.xlarge
 #        maxInstanceCount: 9
 #        subnet: subnet-1234
-#        securityGroup: securityGroup-1234
+#        securityGroups: ["securityGroup-1234"]
 #        diskSettings:
 #          type: gp2
 #          size: 4

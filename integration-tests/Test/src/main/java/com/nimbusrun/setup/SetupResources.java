@@ -68,21 +68,37 @@ public class SetupResources {
     validateProfileNamesUnique(profiles);
     this.profileMap = profiles.stream().collect(Collectors.toMap(Profile::getWorkflowName, Function.identity()));
     createWorkflows(this.profileMap.values(), repository);
+    List<String> errors = new ArrayList<>();
+    matchProfileToHook(profiles, this.repository.listWorkflows().toList(), errors);
+    if(!errors.isEmpty()){
+      errors.forEach(log::error);
+      System.exit(1);
+    }
+
   }
 
-  public boolean startUp(String workflowName) throws IOException, InterruptedException {
+  public Optional<Integer> startUp(String workflowName) throws IOException, InterruptedException {
     Profile profile = this.profileMap.get(workflowName);
     if(profile == null){
       log.error("profile: {} doesn't exists", workflowName);
-      return false;
+      return Optional.empty();
     }
     profile.setHook(createWebhook(profile, this.org, listHooks()));
     boolean runnerGroup = this.githubApi.createRunnerGroup(profile.getRunnerGroupName());
     if(!runnerGroup){
       log.error("failed to generate runner Group for {} ", workflowName);
-      return false;
+      return Optional.empty();
     }
     profile.startNimbusRun();
+    return Optional.of(profile.getPort());
+  }
+
+  public boolean triggerWorkflow(String workflow) throws IOException {
+    Profile profile = profileMap.get(workflow);
+    if(profile == null){
+      return false;
+    }
+    profile.getGhWorkflow().dispatch(testConfigs.getDefaultBranch());
     return true;
   }
 

@@ -65,7 +65,7 @@ compute:
     subnet: subnet-257dbf7d
 
     # AWS security group ID for instance firewall rules
-    securityGroup: sg-0189c3298c7be64ca
+    securityGroups: ["sg-0189c3298c7be64ca"]
 
     # AWS Credentials Profile to used. This will look for the aws credential file at the default location or if you specify the AWS_SHARED_CREDENTIALS_FILE.
     # If you don't specify this value then it will use the DefaultCredential provider to obtain credentials.
@@ -106,7 +106,7 @@ compute:
       instanceType: t3a.xlarge
       maxInstanceCount: 1
       subnet: subnet-1234
-      securityGroup: securityGroup-1234
+      securityGroups: ["securityGroup-1234"]
       diskSettings:
         type: gp2
         size: 4

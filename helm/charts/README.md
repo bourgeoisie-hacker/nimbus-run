@@ -42,7 +42,7 @@ compute:
       idleScaleDownInMinutes: 10        # Minutes of inactivity before scale-down
       region: us-east-1                 # AWS region
       subnet: subnet-257dbf7d           # Subnet ID
-      securityGroup: sg-0189c3298c7be64ca # Security Group ID
+      securityGroups: ["sg-0189c3298c7be64ca"] # Security Group ID
       diskSettings:
         type: gp3                       # gp3 | gp2 | io2 | io1 | st1
         size: 20                        # Disk size in GiB
@@ -142,7 +142,7 @@ Controls how NimbusRun provisions compute for your GitHub Actions runners. Suppo
 | `compute.aws.defaultSettings.idleScaleDownInMinutes` | Minutes of inactivity before scaling down (accounts for boot + runner startup).                                                                 | `10`           |
 | `compute.aws.defaultSettings.region`                 | AWS region for provisioning.                                                                                                                    | `us-east-1`    |
 | `compute.aws.defaultSettings.subnet`                 | Subnet ID for networking.                                                                                                                       | `subnet-1234`  |
-| `compute.aws.defaultSettings.securityGroup`          | Security group ID for firewall rules.                                                                                                           | `sg-1234`      |
+| `compute.aws.defaultSettings.securityGroups`         | List of Security group ID for firewall rules.                                                                                                   | `sg-1234`      |
 | `compute.aws.defaultSettings.credentialsProfile`     | AWS credentials profile name (or uses [default chain](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html)). | `myProfile`    |
 | `compute.aws.defaultSettings.diskSettings.type`      | EBS volume type. Supported: `gp3`, `gp2`, `io2`, `io1`, `st1`.                                                                                  | `gp3`          |
 | `compute.aws.defaultSettings.diskSettings.size`      | Disk size in GiB.                                                                                                                               | `20`           |
@@ -162,7 +162,7 @@ actionPools:
     instanceType: t3a.xlarge
     maxInstanceCount: 9
     subnet: subnet-1234
-    securityGroup: sg-1234
+    securityGroups: ["sg-1234"]
     diskSettings:
       type: gp2
       size: 4

@@ -11,7 +11,7 @@ compute:
   defaultSettings:
     region: "us-east-1"
     subnet: "" # subnet-id i.e subnet-1234
-    securityGroup: "" # security group id i.e sg-1234
+    securityGroups: [] # security group id i.e sg-1234
     diskSettings:
       type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
       size: "20" # in gigs

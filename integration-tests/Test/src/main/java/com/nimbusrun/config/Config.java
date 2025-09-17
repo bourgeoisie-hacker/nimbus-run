@@ -124,14 +124,14 @@ public class Config {
     }
   }
 
-  public AwsConfig parseAwsConfg(JSONObject obj, List<String> errors){
+  public AwsConfig parseAwsConfig(JSONObject obj, List<String> errors){
     String region = getValue(obj, "region", AWS_REGION, errors);
     String subnet = getValue(obj, "subnet", AWS_SUBNET, errors);
-    String securityGroup = getValue(obj, "securityGroup", AWS_SECURITY_GROUP, errors);
+    List<String> securityGroup = getList(obj, "securityGroup", AWS_SECURITY_GROUP, errors);
     return new AwsConfig(region,subnet,securityGroup);
 
   }
-  public GcpConfig parseGcpConfg(JSONObject obj, List<String> errors){
+  public GcpConfig parseGcpConfig(JSONObject obj, List<String> errors){
     String projectId = getValue(obj, "projectId", GCP_PROJECT_ID, errors);
     String region = getValue(obj, "region", GCP_REGION, errors);
     String subnet = getValue(obj, "subnet", GCP_SUBNET, errors);

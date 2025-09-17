@@ -3,6 +3,7 @@ package com.nimbusrun.orm.aws;// pom: lombok + jackson
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import lombok.Data;
 
 import java.util.Map;
@@ -22,7 +23,7 @@ public class AwsActionPoolsConfig {
         private int idleScaleDownInMinutes;
         private String credentialsProfile;
         private String subnet;
-        private String securityGroup;
+        private List<String> securityGroups;
         private DiskSettings diskSettings;
         private String architecture;
         private String os;

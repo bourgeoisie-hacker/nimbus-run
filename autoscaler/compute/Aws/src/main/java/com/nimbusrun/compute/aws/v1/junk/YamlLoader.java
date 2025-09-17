@@ -12,7 +12,7 @@ public class YamlLoader {
         idleScaleDownInMinutes: 2
         region: us-east-1
         subnet: subnet-257dbf7d
-        securityGroup: sg-0189c3298c7be64ca
+        securityGroups: sg-0189c3298c7be64ca
         #    credentialsProfile: #<------- if blank it'll just use the default Credentials provider
         diskSettings:
           type: "gp3" #Possible values gp3 | gp2 | io2 | io1| st1
@@ -27,7 +27,7 @@ public class YamlLoader {
           instanceType: t3a.xlarge
           maxInstanceCount: 1
           subnet: subnet-1234
-          securityGroup: securityGroup-1234
+          securityGroups: ["securityGroup-1234"]
           diskSettings:
             type: "gp2"
             size: 4

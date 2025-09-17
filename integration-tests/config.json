@@ -9,7 +9,7 @@
   "aws": {
     "region": "us-east-1",
     "subnet": "subnet-257dbf7d",
-    "securityGroup" : "sg-0189c3298c7be64ca"
+    "securityGroup" : ["sg-0189c3298c7be64ca"]
   },
   "gcp": {
     "projectId": "utility-glider-471519-u7",

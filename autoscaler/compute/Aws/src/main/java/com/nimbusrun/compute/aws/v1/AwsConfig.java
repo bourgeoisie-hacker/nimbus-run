@@ -23,7 +23,7 @@ public class AwsConfig {
   private static final String TYPE = "type";
   private static final String REGION = "region";
   private static final String SUBNET = "subnet";
-  private static final String SECURITY_GROUP = "securityGroup";
+  private static final String SECURITY_GROUP = "securityGroups";
   private static final String CREDENTIALS_PROFILE = "credentialsProfile";
   private static final String DISK_SETTINGS = "diskSettings";
   private static final String DISK_SETTINGS_TYPE = "type";
@@ -59,8 +59,8 @@ public class AwsConfig {
   private void fillInActionPoolWithDefaults(ActionPool actionPool, ActionPool defaults) {
     setFromDefault(actionPool::getRegion, defaults::getRegion, actionPool::setRegion);
     setFromDefault(actionPool::getSubnet, defaults::getSubnet, actionPool::setSubnet);
-    setFromDefault(actionPool::getSecurityGroup, defaults::getSecurityGroup,
-        actionPool::setSecurityGroup);
+    setFromDefault(actionPool::getSecurityGroups, defaults::getSecurityGroups,
+        actionPool::setSecurityGroups);
     setFromDefault(actionPool::getCredentialsProfile, defaults::getCredentialsProfile,
         actionPool::setCredentialsProfile);
     setFromDefault(actionPool::getDiskSettings, defaults::getDiskSettings,
@@ -154,7 +154,7 @@ public class AwsConfig {
     private Integer idleScaleDownInMinutes;
     private String credentialsProfile;
     private String subnet;
-    private String securityGroup;
+    private List<String> securityGroups;
     private DiskSettings diskSettings;
     private boolean isDefault;
     @JsonDeserialize(using = ProcessorArchitecture.Deserialize.class)
@@ -236,12 +236,12 @@ public class AwsConfig {
       this.subnet = subnet;
     }
 
-    public String getSecurityGroup() {
-      return securityGroup;
+    public List<String> getSecurityGroups() {
+      return securityGroups;
     }
 
-    public void setSecurityGroup(String securityGroup) {
-      this.securityGroup = securityGroup;
+    public void setSecurityGroups(List<String> securityGroups) {
+      this.securityGroups = securityGroups;
     }
 
     public DiskSettings getDiskSettings() {

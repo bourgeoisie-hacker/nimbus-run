@@ -209,7 +209,7 @@ jobs:
     list.className = 'list-group list-group-flush my-2';
     const items = [
       ['Subnet', pool.subnet],
-      ['Security Group', pool.securityGroup],
+      ['Security Group', pool.securityGroups],
       ['Disk', pool.diskSettings ? `${pool.diskSettings.type ?? 'gp3'} / ${pool.diskSettings.size} GiB` : '—'],
       ['Key Pair', pool.keyPairName || '—'],
     ];
