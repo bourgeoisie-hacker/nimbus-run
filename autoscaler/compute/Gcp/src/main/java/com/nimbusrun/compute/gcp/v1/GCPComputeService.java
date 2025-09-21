@@ -217,7 +217,6 @@ public class GCPComputeService extends Compute {
         if (!zoneInstances.getValue().getInstancesList().isEmpty()) {
           for (Instance instance : zoneInstances.getValue().getInstancesList()) {
             ListInstanceResponse.Instance listInstance = new ListInstanceResponse.Instance(
-                instance.getName(),
                 instance.getId() + "",
                 instance.getName(),
                 Instant.parse(instance.getCreationTimestamp()).toEpochMilli(),
@@ -365,7 +364,7 @@ public class GCPComputeService extends Compute {
   @Override
   public ComputeConfigResponse receiveComputeConfigs(Map<String, Object> map,
       String autoScalerName) {
-    GCPConfig gcpConfig = new GCPConfig().createGcpConfigs(new Yaml().dump(map));
+    GCPConfig gcpConfig = new GCPConfig().createGcpConfigs(map);
     List<String> errors = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
     List<GCPConfig.ActionPool> actionPools = new ArrayList<>();

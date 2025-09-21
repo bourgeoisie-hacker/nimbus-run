@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
-import com.nimbusrun.autoscaler.github.GithubService;
+import com.nimbusrun.autoscaler.github.GithubServiceApi;
 import com.nimbusrun.autoscaler.github.orm.listDelivery.DeliveryRecord;
 import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.autoscaler.metrics.MetricsContainer;
@@ -19,8 +19,6 @@ import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.webhook.WebhookReceiver;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,7 +48,7 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.hc.core5.http.ProtocolException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -60,6 +57,7 @@ public class Autoscaler implements WebhookReceiver {
 
   public static final Integer MAX_CREATE_FAILURE_RETRIES = 3;
   public static final Integer MAX_CREATE_POOL_FULL_RETRIES = 1000;
+
 
   private final Map<String, Set<String>> currentInstances;
   private final ScheduledExecutorService scheduledExecutorService;
@@ -70,7 +68,7 @@ public class Autoscaler implements WebhookReceiver {
   private final Optional<ActionPool> defaultActionPool;
   private final MetricsContainer metricsContainer;
   private Compute compute;
-  private GithubService githubService;
+  private GithubServiceApi githubService;
   private ConfigReader configReader;
   private final ExecutorService processMessageThread;
   private final ExecutorService threadPerTasks;
@@ -117,8 +115,8 @@ public class Autoscaler implements WebhookReceiver {
    */
   private final Cache<String, AtomicInteger> actionPoolUpScale;
 
-  public Autoscaler(Compute compute, GithubService githubService, ConfigReader configReader,
-      MetricsContainer metricsContainer) throws InterruptedException {
+  public Autoscaler(Compute compute, GithubServiceApi githubService, ConfigReader configReader,
+      MetricsContainer metricsContainer, @Value("${autoscalerThreadDelay:#{30*1000}}") int scheduleThreadDelayInMilli) throws InterruptedException {
     this.compute = compute;
     this.githubService = githubService;
     this.configReader = configReader;
@@ -130,14 +128,6 @@ public class Autoscaler implements WebhookReceiver {
     this.currentInstances =populateCurrentInstances();
     this.defaultActionPool = actionPoolMap.values().stream().filter(ActionPool::isDefault)
         .findAny();
-    this.scheduledExecutorService.scheduleWithFixedDelay(this::handleComputeAndRunners, 1, 30,
-        TimeUnit.SECONDS);
-    this.scheduledExecutorService.scheduleWithFixedDelay(this::updateCurrentInstances, 1, 30,
-        TimeUnit.SECONDS);
-    this.processMessageThread.execute(this::processMessage);
-    this.processMessageThread.execute(this::processRetryMessage);
-    this.processMessageThread.execute(this::scheduleRetry);
-
     this.runnerLastBusy = Caffeine.newBuilder()
         .maximumSize(1_000_000)
         .expireAfterWrite(Duration.ofHours(2))
@@ -154,10 +144,24 @@ public class Autoscaler implements WebhookReceiver {
         .maximumSize(1_000_000)
         .expireAfterWrite(Duration.ofMinutes(1))
         .build();
+    // This may lead to problems. For example if Nimbus Run has been down for a period of time and
+    // there are jobs that haven't been triggered then when a new request comes it may not satisfy
+    // that request. When the retry logic triggers it might not cause an upscale because its in this cache already.
+    // I think the best approach is to still use this caching mechanism. To prevent abuse all we need do is keep the duration at around 1 minute.
+    // Also if someone was dedicated to abusing this system it would be hard to circumvent this. You would only need to change the workflow id on each request.
+    // We also have the protection of maximum number of instances for an Action Pool.
     this.githubRunnerIdUpscaledCache = Caffeine.newBuilder()
         .maximumSize(1_000_000)
-        .expireAfterWrite(Duration.ofHours(3))
+        .expireAfterWrite(Duration.ofMinutes(1))
         .build();
+
+    this.scheduledExecutorService.scheduleWithFixedDelay(this::handleComputeAndRunners, 10, scheduleThreadDelayInMilli,
+        TimeUnit.MILLISECONDS);
+    this.scheduledExecutorService.scheduleWithFixedDelay(this::updateCurrentInstances, 10, scheduleThreadDelayInMilli,
+        TimeUnit.MILLISECONDS);
+    this.processMessageThread.execute(this::processMessage);
+    this.processMessageThread.execute(this::processRetryMessage);
+    this.processMessageThread.execute(this::scheduleRetry);
   }
 
 
@@ -489,7 +493,7 @@ public class Autoscaler implements WebhookReceiver {
         try {
           ListInstanceResponse response = this.compute.listComputeInstances(actionPool);
           response.instances().forEach(instance -> {
-            Runner runner = runners.get(instance.getName());
+            Runner runner = runners.get(instance.getInstanceName());
             Boolean runnerComplete = null;
             Boolean runnerBusy = null;
             boolean instanceIdleTimeExceeded = false;
@@ -636,7 +640,7 @@ public class Autoscaler implements WebhookReceiver {
   }
 
   @PostConstruct
-  public void redeliver() throws ProtocolException, GeneralSecurityException, IOException {
+  public void redeliver() {
     if (!this.githubService.isReplayFailedDeliverOnStartup()
         || this.githubService.getWebhookId() == null) {
       return;

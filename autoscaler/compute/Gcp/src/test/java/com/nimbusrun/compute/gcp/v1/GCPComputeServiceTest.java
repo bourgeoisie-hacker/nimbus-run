@@ -51,7 +51,7 @@ public class GCPComputeServiceTest {
     Map<String, Object> computeMap = new Yaml().load(badCompute1.getInputStream());
 
     // Map -> JSON -> GCPConfig + fill defaults
-    GCPConfig cfg = new GCPConfig().createGcpConfigs(new Yaml().dump(computeMap));
+    GCPConfig cfg = new GCPConfig().createGcpConfigs(computeMap);
 
     Mockito.doCallRealMethod().when(gcpComputeService)
         .validateActionPools(Mockito.any(), Mockito.any(), Mockito.any());
@@ -81,7 +81,7 @@ public class GCPComputeServiceTest {
     Map<String, Object> computeMap = new Yaml().load(badCompute2.getInputStream());
 
     // Map -> JSON -> GCPConfig + fill defaults
-    GCPConfig cfg = new GCPConfig().createGcpConfigs(new Yaml().dump(computeMap));
+    GCPConfig cfg = new GCPConfig().createGcpConfigs(computeMap);
 
     Mockito.doCallRealMethod().when(gcpComputeService)
         .validateActionPools(Mockito.any(), Mockito.any(), Mockito.any());

@@ -56,6 +56,9 @@ public class GithubActionJob implements Comparable<GithubActionJob>, Comparator<
     this.jsonStr = jsonStr;
   }
 
+  public static GithubActionJob fromJson(String object){
+    return fromJson(new JSONObject(object));
+  }
   public static GithubActionJob fromJson(JSONObject object) {
     JSONObject job = object.getJSONObject("workflow_job");
     JSONObject repository = object.getJSONObject("repository");

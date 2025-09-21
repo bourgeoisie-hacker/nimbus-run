@@ -10,6 +10,8 @@ import com.nimbusrun.compute.Constants;
 import com.nimbusrun.compute.DeleteInstanceRequest;
 import com.nimbusrun.compute.GithubApi;
 import com.nimbusrun.compute.ListInstanceResponse;
+import com.nimbusrun.compute.OperatingSystem;
+import com.nimbusrun.compute.OperatingSystemFamily;
 import com.nimbusrun.compute.ProcessorArchitecture;
 import com.nimbusrun.compute.aws.v1.AwsConfig.DiskSettings;
 import java.time.Duration;
@@ -114,7 +116,7 @@ public class AWSComputeService extends Compute {
               .map(Tag::value)
               .findAny()
               .orElse(i.instanceId() + "");
-          return new ListInstanceResponse.Instance(name, i.instanceId(), name,
+          return new ListInstanceResponse.Instance(i.instanceId(), name,
               i.launchTime().toEpochMilli());
         }).toList());
   }
@@ -172,7 +174,7 @@ public class AWSComputeService extends Compute {
   @Override
   public ComputeConfigResponse receiveComputeConfigs(Map<String, Object> map,
       String autoScalerName) {
-    AwsConfig awsConfig = new AwsConfig().createAwsConfig(new Yaml().dump(map));
+    AwsConfig awsConfig = new AwsConfig().createAwsConfig(map);
     List<String> errors = new ArrayList<>();
     List<String> warnings = new ArrayList<>();
     List<AwsConfig.ActionPool> actionPools = new ArrayList<>();
@@ -342,7 +344,6 @@ public class AWSComputeService extends Compute {
     Ec2Client ec2 = actionPoolToEc2Client.get(actionPool.getName());
 
     try {
-      Region region = Region.of(actionPool.getRegion());
       // Set up instance parameters
       String amiId = amiCache.get(actionPool, (r) ->
           latestAmi(ec2, actionPool).orElse(null));
@@ -405,7 +406,7 @@ public class AWSComputeService extends Compute {
       }
 
       BlockDeviceMapping rootVolume = BlockDeviceMapping.builder()
-          .deviceName("/dev/sda1") // Root device name for Ubuntu
+          .deviceName(rootDeviceName(actionPool.getOs().getOperatingSystem().getFamily())) // Root device name for Ubuntu
           .ebs(ebs.build())
           .build();
       runRequest.blockDeviceMappings(rootVolume);
@@ -423,6 +424,13 @@ public class AWSComputeService extends Compute {
     return false;
   }
 
+  public String rootDeviceName(OperatingSystemFamily family){
+    return switch (family){
+      case DEBIAN -> "/dev/xvda";
+      case UBUNTU -> "/dev/sda1";
+      default -> throw new RuntimeException("Unsupported operating system");
+    };
+  }
   public Optional<Region> regionFromString(String region) {
     return Region.regions().stream().filter(r -> r.id().equalsIgnoreCase(region)).findAny();
   }

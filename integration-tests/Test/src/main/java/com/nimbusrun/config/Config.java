@@ -1,7 +1,6 @@
 package com.nimbusrun.config;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -129,8 +128,8 @@ public class Config {
     String subnet = getValue(obj, "subnet", AWS_SUBNET, errors);
     List<String> securityGroup = getList(obj, "securityGroup", AWS_SECURITY_GROUP, errors);
     return new AwsConfig(region,subnet,securityGroup);
-
   }
+
   public GcpConfig parseGcpConfig(JSONObject obj, List<String> errors){
     String projectId = getValue(obj, "projectId", GCP_PROJECT_ID, errors);
     String region = getValue(obj, "region", GCP_REGION, errors);

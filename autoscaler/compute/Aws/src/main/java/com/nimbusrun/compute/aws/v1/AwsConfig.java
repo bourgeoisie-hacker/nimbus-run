@@ -88,18 +88,8 @@ public class AwsConfig {
     }
   }
 
-  public static AwsConfig createAwsConfig(String computeConfig) {
+  public static AwsConfig createAwsConfig(Map<String, Object> yamlData) {
 
-    Map<String, Object> yamlData;
-    try {
-      Yaml yaml = new Yaml();
-      yamlData = yaml.load(computeConfig);
-    } catch (Exception e) {
-      Utils.excessiveErrorLog(
-          "Failed to convert compute section of yaml into json due to %s".formatted(e.getMessage()),
-          e, log);
-      throw e;
-    }
     try {
       ObjectMapper objectMapper = new ObjectMapper();
       objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

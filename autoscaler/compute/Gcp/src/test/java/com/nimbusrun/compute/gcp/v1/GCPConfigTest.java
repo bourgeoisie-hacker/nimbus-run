@@ -12,7 +12,7 @@ class GCPConfigTest {
   // Minimal compute section modeled after your config-gcp.yaml (only the fields we assert)
   private static final String COMPUTE_YAML = ""
       + "defaultSettings:\n"
-      + "  projectId: massive-dynamo-342018\n"
+      + "  projectId: my-super-project\n"
       + "  region: us-east1\n"
       + "  subnet: regions/us-east1/subnetworks/default\n"
       + "  vpc: global/networks/default\n"
@@ -48,11 +48,11 @@ class GCPConfigTest {
     Map<String, Object> computeMap = new Yaml().load(COMPUTE_YAML);
 
     // Map -> JSON -> GCPConfig + fill defaults
-    GCPConfig cfg = new GCPConfig().createGcpConfigs(new Yaml().dump(computeMap));
+    GCPConfig cfg = new GCPConfig().createGcpConfigs(computeMap);
 
     // defaultSettings basic assertions
     GCPConfig.ActionPool defaults = cfg.getDefaultSettings();
-    assertEquals("massive-dynamo-342018", defaults.getProjectId());
+    assertEquals("my-super-project", defaults.getProjectId());
     assertEquals("us-east1", defaults.getRegion());
     assertEquals("regions/us-east1/subnetworks/default", defaults.getSubnet());
     assertEquals("global/networks/default", defaults.getVpc());
@@ -69,7 +69,7 @@ class GCPConfigTest {
     GCPConfig.ActionPool dap = cfg.getDefaultActionPool();
     assertEquals("default-pool", dap.getName());
     assertTrue(dap.isDefault());
-    assertEquals("massive-dynamo-342018", dap.getProjectId());
+    assertEquals("my-super-project", dap.getProjectId());
     assertEquals("us-east1", dap.getRegion());
     assertEquals("global/networks/default", dap.getVpc());
     assertEquals(20, dap.getDiskSettings().getSize());
@@ -79,7 +79,7 @@ class GCPConfigTest {
     assertEquals(4, cfg.getActionPools().size());
     GCPConfig.ActionPool n1 = cfg.getActionPools().stream()
         .filter(p -> p.getName().equals("n1-standard-4")).findFirst().orElseThrow();
-    assertEquals("massive-dynamo-342018", n1.getProjectId());
+    assertEquals("my-super-project", n1.getProjectId());
     assertEquals("regions/us-east1/subnetworks/default", n1.getSubnet()); // inherited
     assertEquals("n1-standard-4", n1.getInstanceType());
     assertEquals(4, n1.getMaxInstanceCount());

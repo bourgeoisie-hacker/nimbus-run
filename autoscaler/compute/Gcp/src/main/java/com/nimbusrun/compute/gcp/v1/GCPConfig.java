@@ -71,18 +71,7 @@ public class GCPConfig {
     }
   }
 
-  public GCPConfig createGcpConfigs(String computeConfig) {
-    Map<String, Object> yamlData;
-    try {
-      Yaml yaml = new Yaml();
-      yamlData = yaml.load(computeConfig);
-    } catch (Exception e) {
-      Utils.excessiveErrorLog(
-          "Failed to convert compute section of yaml into json due to %s".formatted(e.getMessage()),
-          e, log);
-      throw e;
-    }
-
+  public GCPConfig createGcpConfigs(Map<String, Object> yamlData) {
     try {
       ObjectMapper objectMapper = new ObjectMapper();
       objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

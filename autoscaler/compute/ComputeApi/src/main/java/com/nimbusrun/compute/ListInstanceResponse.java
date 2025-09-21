@@ -12,7 +12,6 @@ public record ListInstanceResponse(List<Instance> instances) {
 
   public static class Instance {
 
-    private final String name;
     private final String instanceId;
     private final String instanceName;
     private final Long instanceCreateTimeInMilli;
@@ -21,25 +20,19 @@ public record ListInstanceResponse(List<Instance> instances) {
      */
     private Object extraProperties;
 
-    public Instance(String name, String instanceId, String instanceName,
+    public Instance( String instanceId, String instanceName,
         Long instanceCreateTimeInMilli) {
-      this.name = name;
       this.instanceId = instanceId;
       this.instanceName = instanceName;
       this.instanceCreateTimeInMilli = instanceCreateTimeInMilli;
     }
 
-    public Instance(String name, String instanceId, String instanceName,
+    public Instance( String instanceId, String instanceName,
         Long instanceCreateTimeInMilli, Object extraProperties) {
-      this.name = name;
       this.instanceId = instanceId;
       this.instanceName = instanceName;
       this.instanceCreateTimeInMilli = instanceCreateTimeInMilli;
       this.extraProperties = extraProperties;
-    }
-
-    public String getName() {
-      return name;
     }
 
     public String getInstanceId() {

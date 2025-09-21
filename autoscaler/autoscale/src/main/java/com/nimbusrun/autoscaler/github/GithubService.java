@@ -50,7 +50,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class GithubService implements GithubApi {
+public class GithubService implements GithubServiceApi {
 
   private final String token;
   @Getter

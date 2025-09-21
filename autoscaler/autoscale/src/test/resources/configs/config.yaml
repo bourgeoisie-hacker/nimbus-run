@@ -1,0 +1,13 @@
+actionPools:
+  - name: one
+    maxInstances: 1
+    instanceIdleScaleDownTimeInMinutes: 1
+    isDefault: true
+  - name: two
+    maxInstances: 1
+    instanceIdleScaleDownTimeInMinutes: 1
+    isDefault: false
+  - name: three
+    maxInstances: 1
+    instanceIdleScaleDownTimeInMinutes: 1
+    isDefault: false
