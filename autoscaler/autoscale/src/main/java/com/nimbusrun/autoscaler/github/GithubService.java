@@ -12,7 +12,6 @@ import com.nimbusrun.autoscaler.github.orm.runner.Runner;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.ListRunnerGroup;
 import com.nimbusrun.autoscaler.github.orm.runnergroup.RunnerGroup;
 import com.nimbusrun.compute.Constants;
-import com.nimbusrun.compute.GithubApi;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
@@ -94,8 +93,8 @@ public class GithubService implements GithubServiceApi {
         .map(RunnerGroup::getId)
         .findFirst()
         .orElseThrow(() -> {
-          log.error("Runner group not found: {}", groupName);
-          return new IllegalStateException("Runner group not found: " + groupName);
+          log.error("Runner group not found: {} or the token has expired", groupName);
+          return new IllegalStateException("Runner group not found: %s or the token has expired".formatted( groupName));
         });
   }
 
