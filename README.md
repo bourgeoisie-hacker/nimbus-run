@@ -13,6 +13,8 @@
     * [GCP:](#gcp)
   * [Getting Started](#getting-started)
     * [Requirements](#requirements)
+    * [AWS Required Permissions](#aws-required-permissions)
+    * [GCP Required Permissions:](#gcp-required-permissions)
     * [Step 1: Setup a Webhook](#step-1-setup-a-webhook)
     * [Step 2: Configure a GitHub Action Workflow](#step-2-configure-a-github-action-workflow)
     * [Step 3: Create an Autoscaler Configuration File](#step-3-create-an-autoscaler-configuration-file)
@@ -89,6 +91,32 @@ Before you can unleash NimbusRun, make sure you have the following in place:
 - A [GitHub token](https://github.com/settings/tokens) with the right permissions
 - At least a passing knowledge of [GitHub Actions](https://docs.github.com/en/actions)
 - The service account needs permissions to create/delete/list compute instances
+
+### AWS Required Permissions
+EC2:
+- DescribeInstances
+- TerminateInstances
+- CreateTags
+- RunInstances
+- DescribeImages
+
+Systems Manager:
+- GetParameters
+
+### GCP Required Permissions:
+
+Privileges needed:
+
+- compute.instances.get
+- compute.instances.list
+- compute.instances.create
+- compute.instances.delete
+- compute.instances.setLabels
+- compute.images.get
+- compute.images.list
+
+
+An easy role to use would be `roles/compute.instanceAdmin.v1`
 
 ---
 
