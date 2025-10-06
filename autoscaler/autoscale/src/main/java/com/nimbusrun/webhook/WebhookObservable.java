@@ -1,6 +1,5 @@
 package com.nimbusrun.webhook;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.github.GithubActionRun;
@@ -29,7 +28,6 @@ public class WebhookObservable {
     webhookProcessors.execute(this::processGithubRuns);
   }
 
-  @VisibleForTesting
   private void processGithubJobs() {
     while (true) {
       try {
@@ -51,7 +49,6 @@ public class WebhookObservable {
       }
     }
   }
-  @VisibleForTesting
   private void processGithubRuns() {
     while (true) {
       try {

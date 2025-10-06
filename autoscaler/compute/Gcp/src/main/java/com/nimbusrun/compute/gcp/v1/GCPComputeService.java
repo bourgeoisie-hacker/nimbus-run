@@ -437,7 +437,7 @@ public class GCPComputeService extends Compute {
       }
       if (actionPool.getServiceAccountPathOpt().isEmpty()) {
         warnings.add(
-            "Action pool %s missing serviceAccountPath. Using environment default credentials");
+            "Action pool %s missing serviceAccountPath. Using environment default credentials".formatted(name));
       } else if (Files.notExists(Paths.get(actionPool.getServiceAccountPath()))
           || !Files.isRegularFile(Paths.get(actionPool.getServiceAccountPath()))) {
         errors.add(

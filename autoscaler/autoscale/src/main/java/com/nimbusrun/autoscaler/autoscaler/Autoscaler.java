@@ -3,7 +3,6 @@ package com.nimbusrun.autoscaler.autoscaler;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.annotations.VisibleForTesting;
 import com.nimbusrun.Utils;
 import com.nimbusrun.autoscaler.github.GithubServiceApi;
 import com.nimbusrun.autoscaler.github.orm.listDelivery.DeliveryRecord;
@@ -19,6 +18,7 @@ import com.nimbusrun.compute.exceptions.InstanceCreateTimeoutException;
 import com.nimbusrun.config.ConfigReader;
 import com.nimbusrun.github.GithubActionJob;
 import com.nimbusrun.webhook.WebhookReceiver;
+import jakarta.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -45,7 +45,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -168,7 +167,6 @@ public class Autoscaler implements WebhookReceiver {
   /**
    * @return map of action pool names to {@link ActionPool}
    */
-  @VisibleForTesting
   private Map<String, ActionPool> populateActionPoolMap() {
     return this.getConfigReader().getActionPoolMap().values().stream().collect(
         Collectors.toMap(ActionPool::getName, Function.identity(), (a, b) -> b,
@@ -177,7 +175,6 @@ public class Autoscaler implements WebhookReceiver {
 /**
    * @return map of action pool names to {@link ActionPool}
    */
-  @VisibleForTesting
   private Map<String, Set<String>> populateCurrentInstances() {
     Map<String, Set<String>> items = new ConcurrentHashMap<>();
     this.getConfigReader().getActionPoolMap().keySet().stream().forEach((name)-> items.put(name,new HashSet<>()));

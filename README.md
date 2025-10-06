@@ -8,6 +8,9 @@
 * [NimbusRun](#nimbusrun)
   * [🚀 What is NimbusRun?](#-what-is-nimbusrun)
   * [Helm Chart](#helm-chart)
+  * [Setup Videos](#setup-videos)
+    * [AWS:](#aws)
+    * [GCP:](#gcp)
   * [Getting Started](#getting-started)
     * [Requirements](#requirements)
     * [Step 1: Setup a Webhook](#step-1-setup-a-webhook)
@@ -16,6 +19,7 @@
     * [Step 4: Define Docker Compose](#step-4-define-docker-compose)
   * [Make sure your config.yaml lives in the same directory as your compose file.](#make-sure-your-configyaml-lives-in-the-same-directory-as-your-compose-file)
     * [Step 5: Setup the Webhook](#step-5-setup-the-webhook)
+  * [WebPage](#webpage)
     * [🌍 Required Environment Variable](#-required-environment-variable)
   * [⚙️ Configuration Properties](#-configuration-properties)
     * [Main application configurations](#main-application-configurations)
@@ -23,6 +27,7 @@
     * [GCP Compute Configurations](#gcp-compute-configurations)
     * [🧩 Full Config Examples](#-full-config-examples)
   * [Metrics](#metrics)
+    * [PromQL Examples](#promql-examples)
   * [Supported Operating Systems Compatibility Matrix](#supported-operating-systems-compatibility-matrix)
   * [Supported CPU Architecture](#supported-cpu-architecture)
 <!-- TOC -->
@@ -51,6 +56,26 @@ cash*). NimbusRun fixes that with **on-demand scaling** and cloud-friendly effic
 
 ## Helm Chart
 [Head over to the helm charts directory to see the helm chart](helm/charts)
+
+## Setup Videos
+
+### AWS:
+<p>
+  <a href="https://youtu.be/nwrBL12NqiE"><img src="images/nimbusrun_aws.png" width="400" alt="NimbusRun Logo" /></a>
+</p>
+
+[https://youtu.be/nwrBL12NqiE](https://youtu.be/nwrBL12NqiE)
+
+-----
+
+### GCP:
+<p>
+  <a href="https://youtu.be/n6u8J6iXBMw"><img src="images/nimbusrun_aws.png" width="400" alt="NimbusRun Logo" /></a>
+</p>
+
+[https://youtu.be/n6u8J6iXBMw](https://youtu.be/n6u8J6iXBMw)
+
+-----
 
 
 ## Getting Started
